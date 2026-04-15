@@ -1,0 +1,26 @@
+schema_version = "1.0.0"
+
+id = "b3d_playblast_plus"
+type = "add-on"
+name = "B3D Playblast Plus"
+version = "1.0.0"
+tagline = "Maya/3ds Max style playblast rendering for Blender"
+maintainer = "Lonerobot"
+website = "https://github.com/Lonerobot/b3d-playblast-plus"
+
+tags = ["Animation", "Render", "Pipeline"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+# Optional: restrict to specific platforms.
+# platforms = ["windows-x64", "macos-arm64", "macos-x64", "linux-x64"]
+
+# Optional: Python wheel dependencies (uncomment and populate as needed).
+# [wheels]
+# wheels = ["./wheels/my_library-1.0.0-py3-none-any.whl"]
+
+# Optional: declare any permissions the extension requires.
+# [permissions]
+# files = "Read/write playblast output files to the filesystem"
