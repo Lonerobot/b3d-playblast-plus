@@ -116,7 +116,7 @@ Presets appear in the panel dropdown. Selecting one **previews** the resolution 
 
 ### apngasm
 
-[apngasm](https://apngasm.sourceforge.net/) — an open-source command-line tool for assembling Animated PNG files from a PNG frame sequence. All credit to the apngasm developers and contributors for this excellent utility. The `apngasm.exe` binary is **not** included in this repository; place it in the addon's `bin/` folder to enable APNG mode.
+[apngasm](https://apngasm.sourceforge.net/) — an open-source command-line tool for assembling Animated PNG files from a PNG frame sequence. All credit to the apngasm developers and contributors for this excellent utility. Given it's tiny footprint compared to Ffmpeg, the `apngasm.exe` (v2.9.1) binary is included in this repository.
 
 - Source: [APNG Info](https://en.wikipedia.org/wiki/APNG)
 - Licence: zlib/libpng
@@ -136,7 +136,7 @@ b3d-playblast-plus/
 ├── apng-presets.json       # Editable APNG resolution presets
 ├── .env.example            # Template for local developer config
 ├── _deploy.py              # Dev helper — version bump + local deploy
-├── bin/                    # Place apngasm.exe here (not committed)
+├── bin/                    # apngasm.exe
 └── lib/
     ├── apng_presets.py     # APNG preset loader
     ├── bases.py            # Shared base classes
@@ -174,7 +174,7 @@ python _deploy.py skip     # deploy without version bump
 
 `.env` is git-ignored and will never be committed.
 
-Add the deploy path to your Blender script directories - you can add any number of addons into this location and have them pick up for development testing. I know this isn't the Blender approved workflow, but I find this to work best for me.
+Add the deploy path to your Blender script directories - you can add any number of addons into this location and have them pick up for development testing. I know this isn't the Blender approved workflow, but I find this to work best for me for rapid development and iterative testing.
 
 ![1776435689415](image/README/blender_script_directories.png)
 
