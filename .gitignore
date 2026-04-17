@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Local secrets / developer config — never commit these
+.env
+*.key
+
 # Distribution / packaging
 .Python
 build/
@@ -14,8 +18,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# lib/ and lib64/ are Python packaging conventions — excluded here to avoid
+# accidentally matching the add-on's own lib/ source folder.
+# lib/
+# lib64/
 parts/
 sdist/
 var/

@@ -1,47 +1,59 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-
 """
-B3D Playblast Plus
-==================
-Maya/3ds Max style playblast rendering for Blender.
+#   _____ _  _ ___   _     ___ _  _ ___
+#  |_   _| || | __| | |   |_ _| \| | __|
+# _______________________________________
+#    | | | || |___| |____|___|_|\_|___|
+                                                
+#    ___ _____ _   _ ___ ___ ___  
+#   / __|_   _| | | |   \_ _/ _ \
+#   \__ \ | | | |_| | |) | | (_) |
+#   |___/ |_|  \___/|___/___\___/
+                                                
 
-Metadata is defined in blender_manifest.toml (Blender 4.2+ extension platform).
-The bl_info dict below is retained for backwards-compatibility with older Blender
-versions that do not yet support the extensions platform.
+Playblast Plus — Blender Extension
+
+Self-contained viewport playblast capture and FFmpeg encode tool.
+
+Install
+-------
+Zip the contents of this folder and install via
+Edit > Preferences > Extensions > Install from Disk (Blender 4.2+).
+
+Build the zip from the repo root::
+
+    blender --command extension build --source-dir addons/playblast_blender --output-dir dist
+
+Then install ``dist/playblast_plus-1.5.0.zip`` through the Blender UI.
 """
 
 bl_info = {
-    "name": "B3D Playblast Plus",
-    "author": "Lonerobot",
-    "version": (1, 0, 0),
-    "blender": (4, 2, 0),
-    "location": "View3D > Sidebar > Playblast",
-    "description": "Maya/3ds Max style playblast rendering for Blender",
+    "name": "Playblast Plus",
+    "description": "Viewport playblast capture with FFmpeg encoding",
+    "blender": (4, 0, 0),
     "category": "Render",
-    "doc_url": "https://github.com/Lonerobot/b3d-playblast-plus",
-    "tracker_url": "https://github.com/Lonerobot/b3d-playblast-plus/issues",
+    "author": "Playblast Plus Contributors",
+    "version": (1, 5, 8),
+    "location": "View3D > Sidebar > PBP",
+    "doc_url": "",
+    "warning": "",
+    "support": "COMMUNITY",
 }
 
-import bpy  # noqa: E402  (imported after bl_info intentionally)
 
-from . import operators, panels, preferences
+from . import preferences, props, operators, ui
+from .lib import register_tokens
+from .lib.custom_icons import icons as custom_icons
 
-
-# ---------------------------------------------------------------------------
-# Registration
-# ---------------------------------------------------------------------------
-
-def register() -> None:
-    preferences.register()
-    operators.register()
-    panels.register()
+_MODULES = [preferences, props, operators, ui]
 
 
-def unregister() -> None:
-    panels.unregister()
-    operators.unregister()
-    preferences.unregister()
+def register():
+    custom_icons.register()
+    for mod in _MODULES:
+        mod.register()
 
 
-if __name__ == "__main__":
-    register()
+def unregister():
+    for mod in reversed(_MODULES):
+        mod.unregister()
+    custom_icons.unregister()
