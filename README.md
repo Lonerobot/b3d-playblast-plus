@@ -84,7 +84,8 @@ Switch **Output Format** to **APNG** in addon preferences. In this mode:
 - Optional post-compression via the [Tinify API](https://tinify.com/developers)
 - **Resolution presets** (`apng-presets.json`) let you quickly set Blender's scene resolution and frame rate to match a target platform (e.g. Discord profile effects at 450×880 @ 12 fps)
 
-APNG assembly can be slow at higher resolutions. The **APNG Encode Timeout** preference (default 300 s) controls how long to wait before aborting.
+> [!NOTE]
+> APNG assembly can be slow at higher resolutions. The **APNG Encode Timeout** preference (default 300 s) controls how long to wait before aborting.
 
 ### apng-presets.json
 
