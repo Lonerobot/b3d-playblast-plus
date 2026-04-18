@@ -58,9 +58,10 @@ Open the **N-panel** in the 3D Viewport and switch to the **Playblast Plus** tab
 2. Configure the shading / overlay overrides to suit your needs. 
 3. Hit **Playblast** — frames are captured and automatically encoded to MP4 in your output folder.
 
-FFmpeg is required for MP4 encoding. The addon searches for common install patterns, but if it isn't found, the panel shows an **Install FFmpeg** button that downloads it automatically.
+> [!NOTE]
+> FFmpeg is required for MP4 encoding. The addon searches for common install patterns, but if it isn't found, the panel shows an **Install FFmpeg** button that downloads it automatically.
 
-You can specify a particular build of FFmpeg in. the preferences too.
+> You can specify a particular build of FFmpeg in the preferences too.
 
 ---
 
