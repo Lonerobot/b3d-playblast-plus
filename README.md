@@ -61,13 +61,13 @@ Open the **N-panel** in the 3D Viewport and switch to the **Playblast Plus** tab
 > [!NOTE]
 > FFmpeg is required for MP4 encoding. The addon searches for common install patterns, but if it isn't found, the panel shows an **Install FFmpeg** button that downloads it automatically.
 
-> You can specify a particular build of FFmpeg in the preferences too.
+You can specify a particular build of FFmpeg in the Addon preferences.
 
 ---
 
 ## Experimental: APNG output
 
-> A side project exploring whether viewport captures can be transcoded into an optimised **Animated PNG (APNG)** — a format that supports full alpha transparency and is natively supported in browsers and Discord without any codec negotiation.
+A side project exploring whether viewport captures can be transcoded into an optimised **Animated PNG (APNG)** — a format that supports full alpha transparency and is natively supported in browsers and Discord without any codec negotiation.
 >
 > [Read more about APNG on Wikipedia](https://en.wikipedia.org/wiki/APNG)
 
