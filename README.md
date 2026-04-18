@@ -23,13 +23,13 @@ The right call was a clean, idiomatic Blender addon using native `bpy.types.Pane
 
 ## Features
 
-- Captures the active 3D viewport frame range as a PNG sequence
+- Captures the active 3D viewport frame range as a PNG sequence.
 - Encodes to **H.264 MP4** via FFmpeg (auto-download supported on Windows, Linux, macOS)
-- **Tokenized output filenames** — `<scene>_<camera>_<user>` etc.
+- **Tokenized output filenames** — `<scene>_<camera>_<user>` etc. No need to specify output paths and filenames. Text not inside the token <> brackets is appended normally.
 - Shading and overlay overrides per capture
-- Burn-in overlay support (MP4 mode)
+- Basic burn-in overlay support (MP4 mode) showing filename and frame counter.
 - Half-resolution capture option
-- AYON pipeline integration — extra tokens registered automatically when AYON env vars are detected
+- AYON pipeline integration — extra tokens registered automatically when AYON env vars are detected.
 - Experimental **APNG output** mode (see below)
 
 ---
@@ -38,7 +38,7 @@ The right call was a clean, idiomatic Blender addon using native `bpy.types.Pane
 
 ### From zip (recommended)
 
-1. Download or build a `.zip` of this repository
+1. Download the release or build a `.zip` of this repository.
 2. In Blender: **Edit → Preferences → Add-ons → Install from Disk**
 3. Enable **Playblast Plus** in the add-ons list
 
@@ -54,11 +54,13 @@ Clone the repo and copy the folder into your Blender addons directory, or use `_
 
 Open the **N-panel** in the 3D Viewport and switch to the **Playblast Plus** tab.
 
-1. Set your output token (e.g. `<scene>_<camera>`)
-2. Choose shading / overlay overrides
-3. Hit **Playblast** — frames are captured and encoded to MP4 in your output folder
+1. Set your output token (e.g. `<scene>_<camera>`) Default can be set in the Adddon preferences.
+2. Configure the shading / overlay overrides to suit your needs. 
+3. Hit **Playblast** — frames are captured and automatically encoded to MP4 in your output folder.
 
-FFmpeg is required for MP4 encoding. If it isn't found, the panel shows an **Install FFmpeg** button that downloads it automatically.
+FFmpeg is required for MP4 encoding. The addon searches for common install patterns, but if it isn't found, the panel shows an **Install FFmpeg** button that downloads it automatically.
+
+You can specify a particular build of FFmpeg in. the preferences too.
 
 ---
 
@@ -78,7 +80,7 @@ FFmpeg is required for MP4 encoding. If it isn't found, the panel shows an **Ins
 Switch **Output Format** to **APNG** in addon preferences. In this mode:
 
 - Frames are assembled into an APNG using [apngasm](https://apngasm.sourceforge.net/) instead of FFmpeg
-- Transparency capture is supported (`film_transparent` override)
+- Full transparency capture (`film_transparent` override)
 - Optional post-compression via the [Tinify API](https://tinify.com/developers)
 - **Resolution presets** (`apng-presets.json`) let you quickly set Blender's scene resolution and frame rate to match a target platform (e.g. Discord profile effects at 450×880 @ 12 fps)
 
@@ -96,7 +98,7 @@ Edit `apng-presets.json` in the addon folder to add your own presets:
       "label": "My Preset",
       "width": 512,
       "height": 512,
-      "framerate": 24
+      "framerate": 12
     }
   ]
 }
