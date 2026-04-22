@@ -88,42 +88,36 @@ class PLAYBLASTPLUS_PT_main(Panel):
 
         # ── Tool guard (format-aware) ─────────────────────────────────────
         prefs = context.preferences.addons[__package__].preferences
-        from .lib.ffmpeg_utils import dl_state, find_apngasm, find_ffmpeg
+        from .lib.ffmpeg_utils import dl_state, find_ffmpeg
 
-        if prefs.output_format == 'MP4':
-            if dl_state["running"]:
-                box = layout.box()
-                col = box.column(align=True)
-                col.label(text="Downloading FFmpeg…", icon='IMPORT')
-                col.progress(
-                    factor=dl_state["progress"],
-                    text=f"{int(dl_state['progress'] * 100)} %",
-                )
-                return
-            if dl_state["error"]:
-                box = layout.box()
-                col = box.column(align=True)
-                col.alert = True
-                col.label(text="Download failed", icon='ERROR')
-                col.label(text=dl_state["error"])
-                col.separator(factor=0.3)
-                col.operator("playblastplus.install_ffmpeg", text="Retry", icon='FILE_REFRESH')
-                return
-            if not find_ffmpeg(prefs.ffmpeg_path):
-                warn = layout.box().column(align=True)
-                warn.alert = True
-                warn.label(text="FFmpeg not found", icon='ERROR')
-                warn.label(text="Playblast Plus needs this to convert to mp4")
-                warn.separator(factor=0.3)
-                warn.operator("playblastplus.install_ffmpeg", icon='IMPORT')
-                return
-        else:  # APNG
-            if not find_apngasm():
-                warn = layout.box().column(align=True)
-                warn.alert = True
-                warn.label(text="apngasm not found", icon='ERROR')
-                warn.label(text="Place apngasm.exe in the add-on bin/ folder")
-                return
+        if dl_state["running"]:
+            box = layout.box()
+            col = box.column(align=True)
+            col.label(text="Downloading FFmpeg…", icon='IMPORT')
+            col.progress(
+                factor=dl_state["progress"],
+                text=f"{int(dl_state['progress'] * 100)} %",
+            )
+            return
+        if dl_state["error"]:
+            box = layout.box()
+            col = box.column(align=True)
+            col.alert = True
+            col.label(text="Download failed", icon='ERROR')
+            col.label(text=dl_state["error"])
+            col.separator(factor=0.3)
+            col.operator("playblastplus.install_ffmpeg", text="Retry", icon='FILE_REFRESH')
+            return
+        if not find_ffmpeg(prefs.ffmpeg_path):
+            warn = layout.box().column(align=True)
+            warn.alert = True
+            warn.label(text="FFmpeg not found", icon='ERROR')
+            warn.label(text="Playblast Plus needs this to convert to mp4/APNG")
+            warn.separator(factor=0.3)
+            warn.operator("playblastplus.install_ffmpeg", icon='IMPORT')
+            return
+
+        if prefs.output_format == 'APNG':
             info = layout.box().column(align=True)
             info.alert = True
             info.label(text="APNG conversion can take some time at higher resolutions", icon='INFO')
@@ -216,6 +210,97 @@ class PLAYBLASTPLUS_PT_main(Panel):
             row.operator("playblastplus.run", text="Playblast", icon='RENDER_ANIMATION')
 
         row.operator("playblastplus.snapshot", text="Snap",      icon='IMAGE')
+
+        # ── AYON Publish (only shown when running inside AYON) ────────────
+        if os.getenv("AYON_PROJECT_NAME"):
+            layout.separator(factor=0.5)
+            ayon_box = layout.box()
+            ayon_col = ayon_box.column(align=True)
+
+            # Section header
+            header_row = ayon_col.row(align=True)
+            ayon_icon = get_icon_id("ayon")
+            header_row.label(text="Publish to AYON", **ayon_icon)
+
+            ayon_col.separator(factor=0.5)
+
+            # Context info
+            folder_path = os.getenv("AYON_FOLDER_PATH", "—")
+            task_name   = os.getenv("AYON_TASK_NAME",   "—")
+            ctx_col = ayon_col.column(align=True)
+            ctx_col.scale_y = 0.8
+            ctx_col.enabled = False
+            ctx_col.label(text=f"Folder:  {folder_path}", icon='FILE_FOLDER')
+            ctx_col.label(text=f"Task:    {task_name}",   icon='ARMATURE_DATA')
+
+            ayon_col.separator(factor=0.5)
+
+            # Last playblast path
+            last = props.last_playblast
+            has_last = bool(last and __import__('pathlib').Path(last).is_file())
+            path_col = ayon_col.column(align=True)
+            path_col.scale_y = 0.8
+            if has_last:
+                path_col.enabled = False
+                path_col.label(
+                    text=__import__('pathlib').Path(last).name,
+                    icon='FILE_MOVIE',
+                )
+            else:
+                path_col.alert = True
+                path_col.label(text="No playblast yet — run one first", icon='ERROR')
+
+            ayon_col.separator(factor=0.5)
+
+            # Creator picker
+            from .operators import _ayon_creator_cache
+            creator_row = ayon_col.row(align=True)
+            if _ayon_creator_cache:
+                # Show a plain text field labelled with current selection's label
+                current = next(
+                    (c for c in _ayon_creator_cache if c["id"] == props.ayon_creator_id),
+                    None,
+                )
+                display = current["label"] if current else props.ayon_creator_id
+                creator_row.label(text=f"Creator:  {display}", icon='SHADERFX')
+            else:
+                creator_row.alert = True
+                creator_row.label(text="No creators — press Refresh", icon='ERROR')
+            ayon_col.operator(
+                "playblastplus.refresh_ayon_creators",
+                text="Refresh Creators",
+                icon='FILE_REFRESH',
+            )
+            if _ayon_creator_cache:
+                creator_box = ayon_col.box()
+                creator_col = creator_box.column(align=True)
+                for entry in _ayon_creator_cache:
+                    row = creator_col.row(align=True)
+                    is_selected = props.ayon_creator_id == entry["id"]
+                    op = row.operator(
+                        "playblastplus.set_ayon_creator",
+                        text=entry["label"],
+                        icon='CHECKMARK' if is_selected else 'LAYER_USED',
+                        depress=is_selected,
+                    )
+                    op.creator_id = entry["id"]
+
+            ayon_col.separator(factor=0.5)
+
+            # Variant field
+            ayon_col.prop(props, "ayon_variant", text="Variant")
+
+            ayon_col.separator(factor=0.3)
+
+            # Publish button
+            pub_row = ayon_col.row(align=True)
+            pub_row.scale_y = 1.6
+            pub_row.enabled = has_last and bool(props.ayon_creator_id)
+            pub_row.operator(
+                "playblastplus.ayon_publish",
+                text="Publish Review",
+                **get_icon_id("ayon"),
+            )
 
 
 # ---------------------------------------------------------------------------

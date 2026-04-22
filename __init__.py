@@ -32,7 +32,7 @@ bl_info = {
     "blender": (4, 0, 0),
     "category": "Render",
     "author": "Playblast Plus Contributors",
-    "version": (1, 5, 8),
+    "version": (1, 5, 12),
     "location": "View3D > Sidebar > PBP",
     "doc_url": "",
     "warning": "",

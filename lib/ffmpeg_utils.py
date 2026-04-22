@@ -58,33 +58,6 @@ def find_ffmpeg(custom_path: str = "") -> str | None:
     return None
 
 
-_APNGASM_EXE = "apngasm.exe" if sys.platform == "win32" else "apngasm"
-
-
-def find_apngasm(custom_path: str = "") -> str | None:
-    """Locate the apngasm executable.
-
-    Checks, in order:
-    1. *custom_path* if provided.
-    2. System PATH via ``shutil.which``.
-    3. Local ``<addon>/bin/apngasm[.exe]``.
-    """
-    if custom_path:
-        p = Path(custom_path)
-        if p.is_file():
-            return str(p)
-
-    which = shutil.which("apngasm")
-    if which:
-        return which
-
-    local = bin_dir() / _APNGASM_EXE
-    if local.is_file():
-        return str(local)
-
-    return None
-
-
 # ---------------------------------------------------------------------------
 # Background download / install state
 # ---------------------------------------------------------------------------

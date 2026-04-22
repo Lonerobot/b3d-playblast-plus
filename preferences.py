@@ -47,7 +47,7 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         description="Output format for the encoded playblast",
         items=[
             ('MP4',  "MP4",             "Encode to H.264 MP4 via FFmpeg (default)", 'FILE_MOVIE',  0),
-            ('APNG', "APNG (Experimental)", "Assemble frames into Animated PNG via apngasm", 'IMAGE_DATA', 1),
+            ('APNG', "APNG",            "Encode to Animated PNG via FFmpeg", 'IMAGE_DATA', 1),
         ],
         default='MP4',
     )
@@ -76,7 +76,7 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
 
     apng_timeout: IntProperty(
         name="APNG Encode Timeout",
-        description="Maximum seconds to wait for apngasm to finish. Increase for long sequences at high resolution",
+        description="Maximum seconds to wait for APNG FFmpeg encoding to finish. Increase for long sequences at high resolution",
         default=300,
         min=30,
         soft_max=1800,

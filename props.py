@@ -116,6 +116,22 @@ class PlayblastPlusProps(bpy.types.PropertyGroup):
     )
 
     # ------------------------------------------------------------------
+    # AYON publish
+    # ------------------------------------------------------------------
+
+    ayon_variant: StringProperty(
+        name="Variant",
+        description="AYON product variant for the review publish",
+        default="Main",
+    )
+
+    ayon_creator_id: StringProperty(
+        name="Creator",
+        description="AYON traypublisher creator identifier to use for the publish",
+        default="settings_review",
+    )
+
+    # ------------------------------------------------------------------
     # Read-only state tracking (saved with .blend)
     # ------------------------------------------------------------------
 

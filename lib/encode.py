@@ -116,54 +116,51 @@ def mp4_from_image_sequence(
 
 
 def apng_from_image_sequence(
-    apngasm_path: str,
-    frame_files: list,
+    ffmpeg_path: str,
+    image_seq_path: str,
     output_path: str,
     framerate: int = 24,
-    loop: int = 0,
+    start_frame: int = 0,
+    end_frame: int = 0,
     post_open: bool = False,
     timeout: int = 300,
 ) -> bool:
-    """Assemble a sorted PNG frame list into an Animated PNG using apngasm.
+    """Encode a PNG image sequence to APNG using FFmpeg.
 
     Args:
-        apngasm_path (str): Absolute path to the apngasm executable.
-        frame_files (list[str]): Sorted list of absolute PNG frame paths.
-        output_path (str): Destination .png path for the APNG.
-        framerate (int): Frame rate — used to derive per-frame delay as 1/framerate.
-        loop (int): Loop count. 0 = infinite.
-        post_open (bool): Open the output file after assembly.
+        ffmpeg_path (str): Absolute path to the ffmpeg executable.
+        image_seq_path (str): ffmpeg-style input path, e.g. ``/tmp/shot_%04d.png``.
+        output_path (str): Destination .apng path for the APNG.
+        framerate (int): Output frame rate.
+        start_frame (int): First frame number in the sequence.
+        end_frame (int): Total number of frames to encode.
+        post_open (bool): Open the output file after encoding.
+        timeout (int): Maximum seconds to wait for encoding.
 
     Returns:
         bool: True if the output file was created.
     """
-    if not apngasm_path or not Path(apngasm_path).is_file():
-        print(f"[PlayblastPlus] apngasm not found at: {apngasm_path!r}")
+    if not ffmpeg_path or not Path(ffmpeg_path).is_file():
+        print(f"[PlayblastPlus] ffmpeg not found at: {ffmpeg_path!r}")
         return False
 
-    if not frame_files:
-        print("[PlayblastPlus] apng_from_image_sequence: no frame files provided")
-        return False
-
-    rate = max(int(round(framerate)), 1)
     cmd = (
-        [apngasm_path, output_path]
-        + frame_files
-        + ["1", str(rate), f"-l{loop}"]
+        f'"{ffmpeg_path}" '
+        f"-framerate {framerate} "
+        f"-y "
+        f"-start_number {start_frame} "
+        f"-loglevel quiet "
+        f'-i "{image_seq_path}" '
+        f"-c:v png -plays 0 "
+        f"-frames:v {end_frame} "
+        f'"{output_path}"'
     )
 
-    print(f"[PlayblastPlus] apng encode: {' '.join(cmd)}")
+    print(f"[PlayblastPlus] APNG encode: {cmd}")
     try:
-        result = subprocess.run(
-            cmd,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as e:
-        e.process.kill()
-        print(f"[PlayblastPlus] apng encode timed out after {timeout}s — increase 'APNG Encode Timeout' in add-on preferences")
+        subprocess.call(cmd, shell=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        print(f"[PlayblastPlus] APNG encode timed out after {timeout}s — increase 'APNG Encode Timeout' in add-on preferences")
         return False
 
     output = Path(output_path)
@@ -172,5 +169,5 @@ def apng_from_image_sequence(
             open_media_file(output_path)
         return True
 
-    print(f"[PlayblastPlus] apng encode failed — output not found: {output_path}")
+    print(f"[PlayblastPlus] APNG encode failed — output not found: {output_path}")
     return False

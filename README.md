@@ -55,7 +55,7 @@ Clone the repo and copy the folder into your Blender addons directory, or use `_
 Open the **N-panel** in the 3D Viewport and switch to the **Playblast Plus** tab.
 
 1. Set your output token (e.g. `<scene>_<camera>`) Default can be set in the Adddon preferences.
-2. Configure the shading / overlay overrides to suit your needs. 
+2. Configure the shading / overlay overrides to suit your needs.
 3. Hit **Playblast** — frames are captured and automatically encoded to MP4 in your output folder.
 
 > [!NOTE]
@@ -68,21 +68,28 @@ You can specify a particular build of FFmpeg in the Addon preferences.
 ## Experimental: APNG output
 
 A side project exploring whether viewport captures can be transcoded into an optimised **Animated PNG (APNG)** — a format that supports full alpha transparency and is natively supported in browsers and Discord without any codec negotiation.
->
+
 > [Read more about APNG on Wikipedia](https://en.wikipedia.org/wiki/APNG)
 
 <table align="center"><tr>
-  <td align="center"><img src="https://apng.onevcat.com/assets/elephant.gif" alt="GIF"/><br/><sub>GIF — 337 KB</sub></td>
-  <td align="center"><img src="https://apng.onevcat.com/assets/elephant.png" alt="APNG"/><br/><sub>APNG — 379 KB</sub></td>
+  <td align="center" style="border:none;background:none"><img src="https://apng.onevcat.com/assets/elephant.gif" alt="GIF" style="border:none;background:none"/><br/><sub>GIF — 337 KB</sub></td>
+  <td align="center" style="border:none;background:none"><img src="https://apng.onevcat.com/assets/elephant.png" alt="APNG" style="border:none;background:none"/><br/><sub>APNG — 379 KB</sub></td>
 </tr></table>
 
 <p align="center"><sub>Demo images via <a href="https://apng.onevcat.com/demo/">apng.onevcat.com</a></sub></p>
 
 Switch **Output Format** to **APNG** in addon preferences. In this mode:
 
-- Frames are assembled into an APNG using [apngasm](https://apngasm.sourceforge.net/) instead of FFmpeg
+- Frames are encoded to an APNG using FFmpeg's PNG encoder
 - Full transparency capture (`film_transparent` override)
-- Optional post-compression via the [Tinify API](https://tinify.com/developers)
+- Optional post-compression via the [Tinify API](https://tinify.com/developers) (Between 50-80% generally)
+
+<table align="center"><tr>
+  <td align="center" style="border:none;background:none"><img src="image/README/tinified.png" alt="apng-tinified" style="border:none;background:none"/><br/><sub>Tinified APNG — 200 KB</sub></td>
+</tr></table>
+
+Tinify isn't something you have to do, but it does make a huge difference to the resulting filesize 
+
 - **Resolution presets** (`apng-presets.json`) let you quickly set Blender's scene resolution and frame rate to match a target platform (e.g. Discord profile effects at 450×880 @ 12 fps)
 
 > [!NOTE]
@@ -116,14 +123,7 @@ Presets appear in the panel dropdown. Selecting one **previews** the resolution 
   <img src="https://upload.wikimedia.org/wikipedia/commons/5/5f/FFmpeg_Logo_new.svg" width="10%" alt="FFMPEG logo"/>
 </p>
 
-[FFmpeg](https://ffmpeg.org/) — the backbone of the MP4 encode step. An industry-standard, open-source multimedia framework. Installed locally and referenced by the addon; never bundled in the repository.
-
-### apngasm
-
-[apngasm](https://apngasm.sourceforge.net/) — an open-source command-line tool for assembling Animated PNG files from a PNG frame sequence. All credit to the apngasm developers and contributors for this excellent utility. Given it's tiny footprint compared to Ffmpeg, the `apngasm.exe` (v2.9.1) binary is included in this repository.
-
-- Source: [APNG Info](https://en.wikipedia.org/wiki/APNG)
-- Licence: zlib/libpng
+[FFmpeg](https://ffmpeg.org/) — the backbone of both MP4 and APNG encoding. An industry-standard, open-source multimedia framework. Installed locally and referenced by the addon; never bundled in the repository.
 
 ---
 
@@ -140,7 +140,6 @@ b3d-playblast-plus/
 ├── apng-presets.json       # Editable APNG resolution presets
 ├── .env.example            # Template for local developer config
 ├── _deploy.py              # Dev helper — version bump + local deploy
-├── bin/                    # apngasm.exe
 └── lib/
     ├── apng_presets.py     # APNG preset loader
     ├── bases.py            # Shared base classes
@@ -148,7 +147,7 @@ b3d-playblast-plus/
     ├── blender_preview.py  # Viewport capture logic
     ├── blender_scene.py    # Scene / path helpers
     ├── custom_icons.py
-    ├── encode.py           # FFmpeg + apngasm encode wrappers
+    ├── encode.py           # FFmpeg encode wrappers for MP4 and APNG
     ├── ffmpeg_utils.py     # FFmpeg discovery and auto-install
     ├── register_tokens.py  # Token registration (incl. AYON tokens)
     ├── tinify_client.py    # Stdlib-only Tinify API client
@@ -185,6 +184,10 @@ Add the deploy path to your Blender script directories - you can add any number 
 Blender looks for an `addons` folder inside this path -
 
 ![1776435806298](image/README/addons_folder.png)
+
+or build the repo into a Blender extension
+
+"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --command extension build --source-dir "D:\Documents\repos\b3d-playblast-plus" --output-filepath "D:\Documents\repos\b3d-playblast-plus\releases\extensions" --split-platforms
 
 ---
 
