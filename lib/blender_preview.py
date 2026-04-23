@@ -39,6 +39,7 @@ class BlenderPreview(PreviewRender):
         self._saved_state['color_mode'] = render.image_settings.color_mode
         self._saved_state['resolution_percentage'] = render.resolution_percentage
         self._saved_state['scene_camera'] = bpy.context.scene.camera
+        self._saved_state['use_file_extension'] = render.use_file_extension
 
         _, _, _, space = _find_view3d_context()
         if space:
@@ -88,6 +89,8 @@ class BlenderPreview(PreviewRender):
             render.resolution_percentage = s['resolution_percentage']
         if 'scene_camera' in s:
             bpy.context.scene.camera = s['scene_camera']
+        if 'use_file_extension' in s:
+            render.use_file_extension = s['use_file_extension']
 
         _, _, _, space = _find_view3d_context()
         if space:
@@ -257,6 +260,8 @@ class BlenderPreview(PreviewRender):
         # create_ffmpeg_input's regex matches digits preceded by '.')
         render.filepath = filename + "."
         render.image_settings.file_format = 'PNG'
+        # Force extension so frame files are written as stem.0001.png in Blender 4.x
+        render.use_file_extension = True
         # Preserve alpha when film_transparent is enabled
         if bpy.context.scene.render.film_transparent:
             render.image_settings.color_mode = 'RGBA'
@@ -294,6 +299,9 @@ class BlenderPreview(PreviewRender):
 
         render.filepath = filename
         render.image_settings.file_format = 'PNG'
+        # Force extension so the file is written with .png in Blender 4.x
+        original_use_file_extension = render.use_file_extension
+        render.use_file_extension = True
 
         window, area, region, _ = _find_view3d_context()
         if window and area and region:
@@ -304,6 +312,7 @@ class BlenderPreview(PreviewRender):
 
         render.filepath = original_filepath
         render.image_settings.file_format = original_format
+        render.use_file_extension = original_use_file_extension
 
         saved_path = filename if filename.endswith('.png') else f'{filename}.png'
         return saved_path

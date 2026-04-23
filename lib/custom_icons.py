@@ -21,7 +21,8 @@ class icons:
             cls.unregister()
         cls._icons_ = previews.new()
 
-        icons_dir = Path(__file__).parent / "assets" / "icons"
+        # custom_icons.py lives in lib/; icons are one level up at assets/icons/
+        icons_dir = Path(__file__).parent.parent / "assets" / "icons"
         for attr in [a for a in vars(cls) if not a.startswith('_')]:
             if not isinstance(getattr(cls, attr), int):
                 continue

@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import bpy
@@ -161,7 +162,7 @@ class PLAYBLASTPLUS_OT_run(Operator):
             moved = 0
             for f in Path(temp_dir).iterdir():
                 if f.suffix == '.png' and f.name.startswith(output_name + '.'):
-                    f.replace(frames_dir / f.name)
+                    shutil.move(str(f), str(frames_dir / f.name))
                     moved += 1
             self.report(
                 {'INFO'},
@@ -290,6 +291,10 @@ class PLAYBLASTPLUS_OT_apply_apng_preset(Operator):
 # Module-level registry of active publish processes so the timer can reference them.
 _ayon_publish_procs: list = []
 
+# Last publish result — shown in the panel until the next publish starts.
+# Keys: "label" (str), "success" (bool), "log_path" (str)
+_ayon_last_publish_result: dict = {}
+
 # Cache of (identifier, label) tuples fetched from traypublisher inside Blender.
 # Populated by PLAYBLASTPLUS_OT_refresh_ayon_creators.
 _ayon_creator_cache: list = []  # list of dicts: {"id": str, "label": str, "family": str}
@@ -326,13 +331,17 @@ class PLAYBLASTPLUS_OT_refresh_ayon_creators(Operator):
             self.report({'ERROR'}, f"PlayblastPlus: Failed to initialise AYON create context: {e}")
             return {'CANCELLED'}
 
-        # Collect creators whose product_type suggests review/video content.
-        # We include all creators so the user has full control.
+        # Only the three settings-based creators that TrayPublisher exposes for
+        # playblast publishing. Derive a human-readable label by stripping the
+        # "settings_" prefix and capitalising: settings_review → "Review".
+        _VALID_IDS = {"settings_review", "settings_render", "settings_image"}
         _ayon_creator_cache.clear()
         for cid, creator in create_context.creators.items():
-            label = getattr(creator, "label", None) or cid
-            family = getattr(creator, "product_type", "") or ""
-            _ayon_creator_cache.append({"id": cid, "label": label, "family": family})
+            if cid not in _VALID_IDS:
+                continue
+            product_type = cid[len("settings_"):]
+            label = product_type.capitalize()
+            _ayon_creator_cache.append({"id": cid, "label": label, "family": product_type})
 
         _ayon_creator_cache.sort(key=lambda x: x["label"])
 
@@ -366,6 +375,15 @@ def _ayon_publish_poll() -> float | None:
     """Timer callback: poll active AYON publish subprocesses and log their output."""
     import sys as _sys
 
+    def _redraw_all():
+        try:
+            for window in bpy.context.window_manager.windows:
+                for area in window.screen.areas:
+                    if area.type == 'VIEW_3D':
+                        area.tag_redraw()
+        except Exception:
+            pass
+
     still_running = []
     for entry in _ayon_publish_procs:
         proc   = entry["proc"]
@@ -388,10 +406,28 @@ def _ayon_publish_poll() -> float | None:
             log_path = entry["log_path"]
             if ret == 0:
                 print(f"[PlayblastPlus] AYON publish succeeded: {label}  log → {log_path}")
+                _ayon_last_publish_result.update(
+                    {"label": label, "success": True, "log_path": log_path}
+                )
+                try:
+                    _lbl, _lp = label, log_path
+                    def _popup_ok(self, context, _l=_lbl, _lp=_lp):
+                        col = self.layout.column(align=True)
+                        col.label(text=f"'{_l}' published successfully.", icon='CHECKMARK')
+                        col.separator(factor=0.3)
+                        col.label(text=_lp, icon='FILE_TEXT')
+                    bpy.context.window_manager.popup_menu(
+                        _popup_ok, title="AYON Publish Complete", icon='INFO'
+                    )
+                except Exception:
+                    pass
             else:
                 print(
                     f"[PlayblastPlus] AYON publish FAILED (exit {ret}): {label}\n"
                     f"  See log: {log_path}"
+                )
+                _ayon_last_publish_result.update(
+                    {"label": label, "success": False, "log_path": log_path}
                 )
                 # Print the last 40 lines of the log to the Blender console
                 try:
@@ -403,17 +439,27 @@ def _ayon_publish_poll() -> float | None:
                     print("[PlayblastPlus] --- end log ---")
                 except Exception as e:
                     print(f"[PlayblastPlus] Could not read log: {e}")
-            # Redraw panels so the UI reflects updated state
-            try:
-                for window in bpy.context.window_manager.windows:
-                    for area in window.screen.areas:
-                        if area.type == 'VIEW_3D':
-                            area.tag_redraw()
-            except Exception:
-                pass
+                try:
+                    _lbl, _lp = label, log_path
+                    def _popup_err(self, context, _l=_lbl, _lp=_lp):
+                        col = self.layout.column(align=True)
+                        col.label(text=f"Publish FAILED for '{_l}'.", icon='ERROR')
+                        col.separator(factor=0.3)
+                        col.label(text="See log for details:", icon='FILE_TEXT')
+                        col.label(text=_lp)
+                    bpy.context.window_manager.popup_menu(
+                        _popup_err, title="AYON Publish Failed", icon='ERROR'
+                    )
+                except Exception:
+                    pass
+            _redraw_all()
 
     _ayon_publish_procs[:] = still_running
-    return 1.0 if still_running else None
+    # Redraw on every tick while publishing so the "Publishing…" indicator updates
+    if still_running:
+        _redraw_all()
+        return 1.0
+    return None
 
 
 class PLAYBLASTPLUS_OT_ayon_publish(Operator):
@@ -465,10 +511,15 @@ class PLAYBLASTPLUS_OT_ayon_publish(Operator):
             )
             return {'CANCELLED'}
 
-        # ── Variant ───────────────────────────────────────────────────────
+        # ── Variant & creator ─────────────────────────────────────────────
         variant = props.ayon_variant.strip()
         if not variant:
             self.report({'ERROR'}, "PlayblastPlus: AYON variant cannot be empty.")
+            return {'CANCELLED'}
+
+        creator_id = props.ayon_creator_id.strip()
+        if not creator_id:
+            self.report({'ERROR'}, "PlayblastPlus: No AYON creator selected — use 'Refresh Creators'.")
             return {'CANCELLED'}
 
         # ── Last playblast ────────────────────────────────────────────────

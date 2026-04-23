@@ -57,6 +57,24 @@ def _menu_func_view3d(self, context):
     self.layout.menu(VIEW3D_MT_playblastplus.bl_idname)
 
 
+class PLAYBLASTPLUS_MT_creator_menu(Menu):
+    bl_label = "Select Creator"
+    bl_idname = "PLAYBLASTPLUS_MT_creator_menu"
+
+    def draw(self, context):
+        from .operators import _ayon_creator_cache
+        layout = self.layout
+        props = context.scene.playblast_plus
+        for entry in _ayon_creator_cache:
+            is_selected = props.ayon_creator_id == entry["id"]
+            op = layout.operator(
+                "playblastplus.set_ayon_creator",
+                text=entry["label"],
+                icon='CHECKMARK' if is_selected else 'NONE',
+            )
+            op.creator_id = entry["id"]
+
+
 # ---------------------------------------------------------------------------
 # Main (flat) panel — no sub-panels, all content in boxes
 # ---------------------------------------------------------------------------
@@ -252,17 +270,20 @@ class PLAYBLASTPLUS_PT_main(Panel):
 
             ayon_col.separator(factor=0.5)
 
-            # Creator picker
+            # Creator picker — dropdown menu
             from .operators import _ayon_creator_cache
             creator_row = ayon_col.row(align=True)
             if _ayon_creator_cache:
-                # Show a plain text field labelled with current selection's label
                 current = next(
                     (c for c in _ayon_creator_cache if c["id"] == props.ayon_creator_id),
                     None,
                 )
                 display = current["label"] if current else props.ayon_creator_id
-                creator_row.label(text=f"Creator:  {display}", icon='SHADERFX')
+                creator_row.menu(
+                    "PLAYBLASTPLUS_MT_creator_menu",
+                    text=display,
+                    icon='SHADERFX',
+                )
             else:
                 creator_row.alert = True
                 creator_row.label(text="No creators — press Refresh", icon='ERROR')
@@ -271,19 +292,6 @@ class PLAYBLASTPLUS_PT_main(Panel):
                 text="Refresh Creators",
                 icon='FILE_REFRESH',
             )
-            if _ayon_creator_cache:
-                creator_box = ayon_col.box()
-                creator_col = creator_box.column(align=True)
-                for entry in _ayon_creator_cache:
-                    row = creator_col.row(align=True)
-                    is_selected = props.ayon_creator_id == entry["id"]
-                    op = row.operator(
-                        "playblastplus.set_ayon_creator",
-                        text=entry["label"],
-                        icon='CHECKMARK' if is_selected else 'LAYER_USED',
-                        depress=is_selected,
-                    )
-                    op.creator_id = entry["id"]
 
             ayon_col.separator(factor=0.5)
 
@@ -293,14 +301,40 @@ class PLAYBLASTPLUS_PT_main(Panel):
             ayon_col.separator(factor=0.3)
 
             # Publish button
+            from .operators import _ayon_publish_procs, _ayon_last_publish_result
+            is_publishing = bool(_ayon_publish_procs)
+
             pub_row = ayon_col.row(align=True)
             pub_row.scale_y = 1.6
-            pub_row.enabled = has_last and bool(props.ayon_creator_id)
+            pub_row.enabled = has_last and bool(props.ayon_creator_id) and not is_publishing
             pub_row.operator(
                 "playblastplus.ayon_publish",
                 text="Publish Review",
                 **get_icon_id("ayon"),
             )
+
+            # ── Publish status ─────────────────────────────────────────
+            if is_publishing:
+                ayon_col.separator(factor=0.3)
+                prog_row = ayon_col.row(align=True)
+                prog_row.enabled = False
+                prog_row.label(text="Publishing…", icon='SORTTIME')
+            elif _ayon_last_publish_result:
+                ayon_col.separator(factor=0.3)
+                res_col = ayon_col.column(align=True)
+                res_col.scale_y = 0.8
+                res_col.enabled = False
+                if _ayon_last_publish_result["success"]:
+                    res_col.label(
+                        text=f"Published: {_ayon_last_publish_result['label']}",
+                        icon='CHECKMARK',
+                    )
+                else:
+                    res_col.alert = True
+                    res_col.label(
+                        text=f"Failed: {_ayon_last_publish_result['label']}",
+                        icon='ERROR',
+                    )
 
 
 # ---------------------------------------------------------------------------
@@ -309,6 +343,7 @@ class PLAYBLASTPLUS_PT_main(Panel):
 
 _CLASSES = [
     PLAYBLASTPLUS_MT_token_menu,
+    PLAYBLASTPLUS_MT_creator_menu,
     VIEW3D_MT_playblastplus,
     PLAYBLASTPLUS_PT_main,
 ]
