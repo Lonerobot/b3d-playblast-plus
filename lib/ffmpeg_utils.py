@@ -9,22 +9,18 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-# Platform-specific download URLs
-# Windows: gyan.dev "essentials" build — ffmpeg.exe + ffprobe.exe only (~80 MB)
-# Linux/macOS: BtbN GPL builds
-_FFMPEG_URLS: dict[str, str] = {
-    "win32":  "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
-    "linux":  "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz",
-    "darwin": "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip",
-}
-
 _FFMPEG_EXE = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 
 
 def default_download_url() -> str:
-    """Return the default download URL for the current platform."""
+    """Return the default download URL for the current platform (from config.json)."""
+    try:
+        from .ayon_config import load_ffmpeg_urls
+        urls = load_ffmpeg_urls()
+    except Exception:
+        urls = {}
     key = "linux" if sys.platform.startswith("linux") else sys.platform
-    return _FFMPEG_URLS.get(key, "")
+    return urls.get(key, "")
 
 
 def bin_dir() -> Path:

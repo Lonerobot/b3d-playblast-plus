@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "playblast_plus"
-version = "1.5.14"
+version = "1.6.0"
 name = "Playblast Plus"
 tagline = "Viewport playblast capture with FFmpeg encoding"
 maintainer = "Lonerobot"

@@ -232,6 +232,19 @@ class PLAYBLASTPLUS_OT_insert_token(Operator):
         return {'FINISHED'}
 
 
+class PLAYBLASTPLUS_OT_set_ayon_variant(Operator):
+    """Set the AYON publish variant"""
+    bl_idname = "playblastplus.set_ayon_variant"
+    bl_label = "Set Variant"
+    bl_description = "Use this variant for the AYON publish"
+
+    variant: bpy.props.StringProperty(name="Variant")
+
+    def execute(self, context):
+        context.scene.playblast_plus.ayon_variant = self.variant
+        return {'FINISHED'}
+
+
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
@@ -299,51 +312,92 @@ _ayon_last_publish_result: dict = {}
 # Populated by PLAYBLASTPLUS_OT_refresh_ayon_creators.
 _ayon_creator_cache: list = []  # list of dicts: {"id": str, "label": str, "family": str}
 
+# Cache of discovered media files per media type (populated by refresh_ayon_media).
+# MP4 / IMAGE entries : {"path": str, "label": str}
+# SEQUENCE entries    : {"pattern": str, "frame_start": int, "frame_end": int,
+#                        "label": str, "frames": list[str], "directory": str}
+_ayon_media_cache: dict = {"MP4": [], "SEQUENCE": [], "IMAGE": []}
+
 
 class PLAYBLASTPLUS_OT_refresh_ayon_creators(Operator):
-    """Query AYON traypublisher inside Blender to list available review creators"""
+    """Probe AYON traypublisher creators via subprocess (avoids OTIO crash inside Blender)"""
     bl_idname = "playblastplus.refresh_ayon_creators"
     bl_label = "Refresh Creators"
-    bl_description = "Fetch available AYON publish creators from the traypublisher addon"
+    bl_description = "Fetch available AYON publish creators (runs outside Blender to avoid crash)"
 
     def execute(self, context):
         import os as _os
+        import json as _json
+        import subprocess
+        import tempfile
+        from pathlib import Path as _Path
 
         project_name = _os.getenv("AYON_PROJECT_NAME", "")
         if not project_name:
             self.report({'ERROR'}, "PlayblastPlus: AYON_PROJECT_NAME is not set.")
             return {'CANCELLED'}
 
-        try:
-            from ayon_core.pipeline import install_host
-            from ayon_core.pipeline.create import CreateContext
-            from ayon_traypublisher.api import TrayPublisherHost
-        except ImportError as e:
-            self.report({'ERROR'}, f"PlayblastPlus: Could not import AYON modules: {e}")
+        ayon_exe = _os.getenv("AYON_EXECUTABLE", "")
+        if not ayon_exe or not _Path(ayon_exe).is_file():
+            self.report(
+                {'ERROR'},
+                "PlayblastPlus: AYON_EXECUTABLE not found — launch Blender from the AYON launcher.",
+            )
             return {'CANCELLED'}
 
+        script_path = _Path(__file__).parent / "lib" / "ayon_probe_creators.py"
+        if not script_path.is_file():
+            self.report({'ERROR'}, f"PlayblastPlus: Probe script missing: {script_path}")
+            return {'CANCELLED'}
+
+        # Write results to a temp JSON file; subprocess fills it.
+        tmp_fh = tempfile.NamedTemporaryFile(
+            suffix=".json", delete=False, prefix="pbp_creators_"
+        )
+        tmp_fh.close()
+        output_path = tmp_fh.name
+
         try:
-            host = TrayPublisherHost()
-            host.set_project_name(project_name)
-            install_host(host)
-            create_context = CreateContext(host, headless=True)
+            result = subprocess.run(
+                [ayon_exe, "run", str(script_path), "--",
+                 "--output", output_path],
+                timeout=30,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.TimeoutExpired:
+            self.report({'ERROR'}, "PlayblastPlus: Creator probe timed out (30 s).")
+            return {'CANCELLED'}
         except Exception as e:
-            self.report({'ERROR'}, f"PlayblastPlus: Failed to initialise AYON create context: {e}")
+            self.report({'ERROR'}, f"PlayblastPlus: Creator probe failed: {e}")
             return {'CANCELLED'}
 
-        # Only the three settings-based creators that TrayPublisher exposes for
-        # playblast publishing. Derive a human-readable label by stripping the
-        # "settings_" prefix and capitalising: settings_review → "Review".
-        _VALID_IDS = {"settings_review", "settings_render", "settings_image"}
-        _ayon_creator_cache.clear()
-        for cid, creator in create_context.creators.items():
-            if cid not in _VALID_IDS:
-                continue
-            product_type = cid[len("settings_"):]
-            label = product_type.capitalize()
-            _ayon_creator_cache.append({"id": cid, "label": label, "family": product_type})
+        if result.returncode != 0:
+            err = (result.stderr or result.stdout or "").strip()[-300:]
+            self.report({'ERROR'}, f"PlayblastPlus: Creator probe exited {result.returncode}: {err}")
+            return {'CANCELLED'}
 
-        _ayon_creator_cache.sort(key=lambda x: x["label"])
+        try:
+            with open(output_path, "r", encoding="utf-8") as fh:
+                creators = _json.load(fh)
+        except Exception as e:
+            self.report({'ERROR'}, f"PlayblastPlus: Could not read creator results: {e}")
+            return {'CANCELLED'}
+        finally:
+            try:
+                _os.unlink(output_path)
+            except Exception:
+                pass
+
+        _ayon_creator_cache.clear()
+        _ayon_creator_cache.extend(creators)
+
+        # Persist to config.json so they survive Blender restarts.
+        try:
+            from .lib.ayon_config import save_creators
+            save_creators(creators)
+        except Exception as _e:
+            print(f"[PlayblastPlus] Could not save creators to config: {_e}")
 
         # If the scene's current creator_id is no longer valid, reset to first entry.
         props = context.scene.playblast_plus
@@ -368,6 +422,47 @@ class PLAYBLASTPLUS_OT_set_ayon_creator(bpy.types.Operator):
 
     def execute(self, context):
         context.scene.playblast_plus.ayon_creator_id = self.creator_id
+        return {'FINISHED'}
+
+
+class PLAYBLASTPLUS_OT_refresh_ayon_media(Operator):
+    """Scan the playblast output directory for publishable media files"""
+    bl_idname = "playblastplus.refresh_ayon_media"
+    bl_label = "Refresh Media"
+    bl_description = "Rescan output directories for MP4, image sequence, and still image files"
+
+    def execute(self, context):
+        from .lib.blender_scene import Blender_Scene
+        from .lib.media_discovery import discover_mp4, discover_images, discover_sequences
+
+        output_dir = Blender_Scene.get_output_dir()
+        _ayon_media_cache["MP4"]      = discover_mp4(output_dir)
+        _ayon_media_cache["IMAGE"]    = discover_images(output_dir)
+        _ayon_media_cache["SEQUENCE"] = discover_sequences(output_dir)
+
+        props = context.scene.playblast_plus
+        entries = _ayon_media_cache.get(props.ayon_media_type, [])
+        if entries:
+            first = entries[0]
+            props.ayon_selected_file = first.get("path") or first.get("pattern", "")
+        else:
+            props.ayon_selected_file = ""
+
+        total = sum(len(v) for v in _ayon_media_cache.values())
+        self.report({'INFO'}, f"PlayblastPlus: found {total} publishable file(s).")
+        return {'FINISHED'}
+
+
+class PLAYBLASTPLUS_OT_set_ayon_media_file(Operator):
+    """Select a media file or sequence to publish to AYON"""
+    bl_idname = "playblastplus.set_ayon_media_file"
+    bl_label = "Select File"
+    bl_description = "Use this file or sequence for the AYON publish"
+
+    filepath: bpy.props.StringProperty()
+
+    def execute(self, context):
+        context.scene.playblast_plus.ayon_selected_file = self.filepath
         return {'FINISHED'}
 
 
@@ -406,14 +501,29 @@ def _ayon_publish_poll() -> float | None:
             log_path = entry["log_path"]
             if ret == 0:
                 print(f"[PlayblastPlus] AYON publish succeeded: {label}  log → {log_path}")
-                _ayon_last_publish_result.update(
-                    {"label": label, "success": True, "log_path": log_path}
-                )
+                # Read the result JSON written by ayon_publish.py.
+                pub_info = ""
+                import json as _json
+                result_path = entry["result_path"]
                 try:
-                    _lbl, _lp = label, log_path
-                    def _popup_ok(self, context, _l=_lbl, _lp=_lp):
+                    with open(result_path, "r", encoding="utf-8") as _rf:
+                        results = _json.load(_rf)
+                    if results:
+                        r = results[0]
+                        pub_info = f"{r['product_name']}  {r['version_str']}"
+                except Exception:
+                    pass
+                _ayon_last_publish_result.update(
+                    {"label": label, "success": True, "log_path": log_path, "pub_info": pub_info}
+                )
+                if pub_info:
+                    print(f"[PlayblastPlus] Published: {pub_info}")
+                try:
+                    _lbl, _lp, _pi = label, log_path, pub_info
+                    def _popup_ok(self, context, _l=_lbl, _lp=_lp, _pi=_pi):
                         col = self.layout.column(align=True)
-                        col.label(text=f"'{_l}' published successfully.", icon='CHECKMARK')
+                        display = _pi if _pi else _l
+                        col.label(text=f"Published: {display}", icon='CHECKMARK')
                         col.separator(factor=0.3)
                         col.label(text=_lp, icon='FILE_TEXT')
                     bpy.context.window_manager.popup_menu(
@@ -472,7 +582,6 @@ class PLAYBLASTPLUS_OT_ayon_publish(Operator):
         import os as _os
         import sys as _sys
         import subprocess
-        import tempfile
         import datetime
         from pathlib import Path as _Path
 
@@ -519,23 +628,48 @@ class PLAYBLASTPLUS_OT_ayon_publish(Operator):
 
         creator_id = props.ayon_creator_id.strip()
         if not creator_id:
-            self.report({'ERROR'}, "PlayblastPlus: No AYON creator selected — use 'Refresh Creators'.")
+            self.report(
+                {'ERROR'},
+                "PlayblastPlus: No product type selected — press Refresh to load creators.",
+            )
             return {'CANCELLED'}
 
-        # ── Last playblast ────────────────────────────────────────────────
-        last = props.last_playblast
-        if not last:
+        # ── Media selection ───────────────────────────────────────────────
+        prefs         = context.preferences.addons[__package__].preferences
+        media_type    = props.ayon_media_type
+        selected_file = props.ayon_selected_file.strip()
+
+        if not selected_file:
             self.report(
                 {'ERROR'},
-                "PlayblastPlus: No playblast path recorded — run a playblast first.",
+                "PlayblastPlus: No media file selected — use the refresh button to scan output.",
             )
             return {'CANCELLED'}
-        if not _Path(last).is_file():
-            self.report(
-                {'ERROR'},
-                f"PlayblastPlus: Playblast file not found on disk: {last}",
-            )
-            return {'CANCELLED'}
+
+        seq_entry = None
+        if media_type == 'SEQUENCE':
+            for e in _ayon_media_cache.get('SEQUENCE', []):
+                if e.get("pattern") == selected_file:
+                    seq_entry = e
+                    break
+            if not seq_entry:
+                self.report(
+                    {'ERROR'},
+                    "PlayblastPlus: Selected sequence not found in cache — refresh media first.",
+                )
+                return {'CANCELLED'}
+            if not prefs.keep_images:
+                self.report(
+                    {'WARNING'},
+                    "PlayblastPlus: 'Keep Images' is disabled — sequence frames may not exist on disk.",
+                )
+        elif media_type in ('MP4', 'IMAGE'):
+            if not _Path(selected_file).is_file():
+                self.report(
+                    {'ERROR'},
+                    f"PlayblastPlus: File not found on disk: {selected_file}",
+                )
+                return {'CANCELLED'}
 
         # ── Publish script ────────────────────────────────────────────────
         script_path = _Path(__file__).parent / "lib" / "ayon_publish.py"
@@ -546,45 +680,79 @@ class PLAYBLASTPLUS_OT_ayon_publish(Operator):
             )
             return {'CANCELLED'}
 
+        # ── Label for UI feedback ─────────────────────────────────────────
+        if media_type == 'SEQUENCE' and seq_entry:
+            pub_label = seq_entry["label"]
+        else:
+            pub_label = _Path(selected_file).name
+
         # ── Log file ──────────────────────────────────────────────────────
+        import json as _json
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_dir  = _Path(tempfile.gettempdir()) / "playblast_plus_publish_logs"
+        log_dir  = _Path(__file__).parent / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / f"ayon_publish_{ts}.log"
+        # Sanitise task/variant so they are safe in a filename.
+        def _safe_slug(s):
+            return "".join(c if c.isalnum() or c in "-_" else "_" for c in s)
+        slug = f"{_safe_slug(task_name)}_{_safe_slug(variant)}_{ts}"
+        log_path    = log_dir / f"ayon_publish_{slug}.log"
+        result_path = log_dir / f"ayon_result_{slug}.json"
         log_fh   = open(log_path, "w", encoding="utf-8")
         log_fh.write(
             f"[PlayblastPlus] AYON publish started {ts}\n"
-            f"  project : {project_name}\n"
-            f"  folder  : {folder_path}\n"
-            f"  task    : {task_name}\n"
-            f"  variant : {variant}\n"
-            f"  file    : {last}\n\n"
+            f"  project    : {project_name}\n"
+            f"  folder     : {folder_path}\n"
+            f"  task       : {task_name}\n"
+            f"  variant    : {variant}\n"
+            f"  media_type : {media_type}\n"
+            f"  file       : {selected_file}\n\n"
         )
         log_fh.flush()
         print(f"[PlayblastPlus] AYON publish log → {log_path}")
 
+        # ── For sequences, write the already-assembled frame list to JSON ─
+        # clique ran inside Blender (media_discovery.py); the publish script
+        # just reads this list — no re-discovery needed there.
+        frames_json_path = None
+        if media_type == 'SEQUENCE':
+            frames_json_path = log_dir / f"ayon_frames_{ts}.json"
+            with open(frames_json_path, "w", encoding="utf-8") as _jf:
+                _json.dump(seq_entry["frames"], _jf)
+            log_fh.write(f"  frames     : {len(seq_entry['frames'])} frames → {frames_json_path}\n\n")
+            log_fh.flush()
+
         # ── Launch — pass context explicitly so ayon_console inherits it ──
-        cmd = [
-            ayon_exe, "run", str(script_path),
-            "--filepath",    last,
-            "--variant",     variant,
-            "--project",     project_name,
-            "--folder-path", folder_path,
-            "--task",        task_name,
-            "--creator",     creator_id,
-        ]
+        if media_type == 'SEQUENCE':
+            cmd = [
+                ayon_exe, "run", str(script_path), "--",
+                "--variant",      variant,
+                "--creator",      creator_id,
+                "--media-type",   "SEQUENCE",
+                "--frames-json",  str(frames_json_path),
+                "--result-json",  str(result_path),
+            ]
+        else:
+            cmd = [
+                ayon_exe, "run", str(script_path), "--",
+                "--filepath",    selected_file,
+                "--variant",     variant,
+                "--creator",     creator_id,
+                "--media-type",  media_type,
+                "--result-json", str(result_path),
+            ]
+
         proc = subprocess.Popen(
             cmd,
             stdout=log_fh,
             stderr=subprocess.STDOUT,
-            # No CREATE_NEW_CONSOLE — we capture stdout instead
         )
 
         _ayon_publish_procs.append({
-            "proc":     proc,
-            "log_fh":   log_fh,
-            "log_path": str(log_path),
-            "label":    _Path(last).name,
+            "proc":        proc,
+            "log_fh":      log_fh,
+            "log_path":    str(log_path),
+            "result_path": str(result_path),
+            "label":       pub_label,
         })
 
         if not bpy.app.timers.is_registered(_ayon_publish_poll):
@@ -592,7 +760,7 @@ class PLAYBLASTPLUS_OT_ayon_publish(Operator):
 
         self.report(
             {'INFO'},
-            f"PlayblastPlus: publishing '{_Path(last).name}' (variant: {variant}) — "
+            f"PlayblastPlus: publishing '{pub_label}' [{media_type}] (variant: {variant}) — "
             f"log → {log_path}",
         )
         return {'FINISHED'}
@@ -649,25 +817,49 @@ class PLAYBLASTPLUS_OT_install_ffmpeg(Operator):
 
 # ---------------------------------------------------------------------------
 # Registration
+class PLAYBLASTPLUS_OT_open_preferences(Operator):
+    """Open Playblast Plus add-on preferences"""
+    bl_idname = "playblastplus.open_preferences"
+    bl_label = "Playblast Plus Preferences"
+    bl_description = "Open Playblast Plus add-on preferences"
+
+    def execute(self, context):
+        bpy.ops.preferences.addon_show(module=__package__)
+        return {'FINISHED'}
+
+
 # ---------------------------------------------------------------------------
 
 _CLASSES = [
     PLAYBLASTPLUS_OT_run,
     PLAYBLASTPLUS_OT_snapshot,
     PLAYBLASTPLUS_OT_insert_token,
+    PLAYBLASTPLUS_OT_set_ayon_variant,
     PLAYBLASTPLUS_OT_open_output,
     PLAYBLASTPLUS_OT_open_last,
     PLAYBLASTPLUS_OT_apply_apng_preset,
     PLAYBLASTPLUS_OT_install_ffmpeg,
     PLAYBLASTPLUS_OT_refresh_ayon_creators,
     PLAYBLASTPLUS_OT_set_ayon_creator,
+    PLAYBLASTPLUS_OT_refresh_ayon_media,
+    PLAYBLASTPLUS_OT_set_ayon_media_file,
     PLAYBLASTPLUS_OT_ayon_publish,
+    PLAYBLASTPLUS_OT_open_preferences,
 ]
 
 
 def register():
     for cls in _CLASSES:
         bpy.utils.register_class(cls)
+
+    # Pre-populate creator cache from config.json so it survives Blender restarts.
+    try:
+        from .lib.ayon_config import load_creators
+        saved = load_creators()
+        if saved:
+            _ayon_creator_cache.extend(saved)
+    except Exception as exc:
+        print(f"[PlayblastPlus] Could not pre-load creators from config: {exc}")
 
 
 def unregister():

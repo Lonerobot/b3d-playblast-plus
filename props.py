@@ -7,6 +7,12 @@ from bpy.props import (
 )
 
 
+def _reset_ayon_selection(self):
+    """Reset file and creator selection when media type changes."""
+    self.ayon_selected_file = ""
+    self.ayon_creator_id = ""
+
+
 def _look_through_camera(self, context):
     """Update callback: switch the viewport to look through the selected camera."""
     cam_name = self.camera
@@ -128,7 +134,25 @@ class PlayblastPlusProps(bpy.types.PropertyGroup):
     ayon_creator_id: StringProperty(
         name="Creator",
         description="AYON traypublisher creator identifier to use for the publish",
-        default="settings_review",
+        default="",
+    )
+
+    ayon_media_type: EnumProperty(
+        name="Media Type",
+        description="Type of media to publish to AYON",
+        items=[
+            ("MP4",      "MP4 Video",      "Publish an encoded MP4 playblast"),
+            ("SEQUENCE", "Image Sequence", "Publish a PNG frame sequence (requires Keep Images)"),
+            ("IMAGE",    "Still Image",    "Publish a single PNG snapshot"),
+        ],
+        default="MP4",
+        update=lambda self, _ctx: _reset_ayon_selection(self),
+    )
+
+    ayon_selected_file: StringProperty(
+        name="Selected File",
+        description="Path or pattern of the media file or sequence to publish",
+        default="",
     )
 
     # ------------------------------------------------------------------

@@ -75,6 +75,54 @@ class PLAYBLASTPLUS_MT_creator_menu(Menu):
             op.creator_id = entry["id"]
 
 
+class PLAYBLASTPLUS_MT_variant_menu(Menu):
+    bl_label = "Select Variant"
+    bl_idname = "PLAYBLASTPLUS_MT_variant_menu"
+
+    def draw(self, context):
+        from .lib.ayon_config import load_config
+        layout = self.layout
+        props = context.scene.playblast_plus
+        media_type = props.ayon_media_type
+        cfg = load_config()
+        variants = cfg.get(media_type, {}).get("variants", [])
+        if not variants:
+            layout.label(text="No variants configured", icon='INFO')
+            return
+        for v in variants:
+            is_selected = props.ayon_variant == v
+            op = layout.operator(
+                "playblastplus.set_ayon_variant",
+                text=v,
+                icon='CHECKMARK' if is_selected else 'NONE',
+            )
+            op.variant = v
+
+
+class PLAYBLASTPLUS_MT_media_file_menu(Menu):
+    bl_label = "Select Media File"
+    bl_idname = "PLAYBLASTPLUS_MT_media_file_menu"
+
+    def draw(self, context):
+        from .operators import _ayon_media_cache
+        layout = self.layout
+        props = context.scene.playblast_plus
+        media_type = props.ayon_media_type
+        entries = _ayon_media_cache.get(media_type, [])
+        if not entries:
+            layout.label(text="No files found", icon='INFO')
+            return
+        for entry in entries:
+            fp = entry.get("path") or entry.get("pattern", "")
+            is_selected = props.ayon_selected_file == fp
+            op = layout.operator(
+                "playblastplus.set_ayon_media_file",
+                text=entry["label"],
+                icon='CHECKMARK' if is_selected else 'NONE',
+            )
+            op.filepath = fp
+
+
 # ---------------------------------------------------------------------------
 # Main (flat) panel — no sub-panels, all content in boxes
 # ---------------------------------------------------------------------------
@@ -231,6 +279,14 @@ class PLAYBLASTPLUS_PT_main(Panel):
 
         # ── AYON Publish (only shown when running inside AYON) ────────────
         if os.getenv("AYON_PROJECT_NAME"):
+            from .operators import (
+                _ayon_creator_cache,
+                _ayon_media_cache,
+                _ayon_publish_procs,
+                _ayon_last_publish_result,
+            )
+            from .lib.ayon_config import load_config
+
             layout.separator(factor=0.5)
             ayon_box = layout.box()
             ayon_col = ayon_box.column(align=True)
@@ -239,6 +295,12 @@ class PLAYBLASTPLUS_PT_main(Panel):
             header_row = ayon_col.row(align=True)
             ayon_icon = get_icon_id("ayon")
             header_row.label(text="Publish to AYON", **ayon_icon)
+            header_row.operator(
+                "playblastplus.open_preferences",
+                text="",
+                icon='PREFERENCES',
+                emboss=False,
+            )
 
             ayon_col.separator(factor=0.5)
 
@@ -253,67 +315,126 @@ class PLAYBLASTPLUS_PT_main(Panel):
 
             ayon_col.separator(factor=0.5)
 
-            # Last playblast path
-            last = props.last_playblast
-            has_last = bool(last and __import__('pathlib').Path(last).is_file())
-            path_col = ayon_col.column(align=True)
-            path_col.scale_y = 0.8
-            if has_last:
-                path_col.enabled = False
-                path_col.label(
-                    text=__import__('pathlib').Path(last).name,
-                    icon='FILE_MOVIE',
-                )
-            else:
-                path_col.alert = True
-                path_col.label(text="No playblast yet — run one first", icon='ERROR')
+            # ── Media Type toggle ────────────────────────────────────────
+            ayon_col.label(text="Media Type", icon='FILE_MOVIE')
+            mt_row = ayon_col.row(align=True)
+            mt_row.prop_enum(props, "ayon_media_type", "MP4",      text="MP4")
+            mt_row.prop_enum(props, "ayon_media_type", "SEQUENCE", text="Sequence")
+            mt_row.prop_enum(props, "ayon_media_type", "IMAGE",    text="Image")
 
-            ayon_col.separator(factor=0.5)
+            media_type = props.ayon_media_type
 
-            # Creator picker — dropdown menu
-            from .operators import _ayon_creator_cache
-            creator_row = ayon_col.row(align=True)
-            if _ayon_creator_cache:
-                current = next(
-                    (c for c in _ayon_creator_cache if c["id"] == props.ayon_creator_id),
-                    None,
-                )
-                display = current["label"] if current else props.ayon_creator_id
-                creator_row.menu(
-                    "PLAYBLASTPLUS_MT_creator_menu",
-                    text=display,
-                    icon='SHADERFX',
-                )
-            else:
-                creator_row.alert = True
-                creator_row.label(text="No creators — press Refresh", icon='ERROR')
-            ayon_col.operator(
-                "playblastplus.refresh_ayon_creators",
-                text="Refresh Creators",
-                icon='FILE_REFRESH',
-            )
-
-            ayon_col.separator(factor=0.5)
-
-            # Variant field
-            ayon_col.prop(props, "ayon_variant", text="Variant")
+            # Warn if Sequence selected but keep_images is off
+            if media_type == 'SEQUENCE' and not prefs.keep_images:
+                warn_col = ayon_col.column(align=True)
+                warn_col.alert = True
+                warn_col.label(text="Enable 'Keep Images' in preferences", icon='ERROR')
+                warn_col.label(text="to preserve frame sequences for publish.")
 
             ayon_col.separator(factor=0.3)
 
-            # Publish button
-            from .operators import _ayon_publish_procs, _ayon_last_publish_result
+            # ── File selection (menu + refresh icon) ─────────────────────
+            entries = _ayon_media_cache.get(media_type, [])
+            selected_file = props.ayon_selected_file
+
+            file_row = ayon_col.row(align=True)
+            if entries:
+                sel_label = "Select file…"
+                for e in entries:
+                    fp = e.get("path") or e.get("pattern", "")
+                    if fp == selected_file:
+                        sel_label = e["label"]
+                        break
+                file_row.menu(
+                    "PLAYBLASTPLUS_MT_media_file_menu",
+                    text=sel_label,
+                    icon='FILE',
+                )
+            else:
+                no_file = file_row.row(align=True)
+                no_file.alert = True
+                no_file.label(text="No files — press refresh", icon='INFO')
+            file_row.operator(
+                "playblastplus.refresh_ayon_media",
+                text="",
+                icon='FILE_REFRESH',
+            )
+
+            ayon_col.separator(factor=0.3)
+
+            # ── Product type (filtered toggle buttons + inline refresh) ───
+            cfg = load_config()
+            allowed_products = cfg.get(media_type, {}).get("products", ["review"])
+            filtered_creators = [
+                c for c in _ayon_creator_cache
+                if c["family"] in allowed_products
+            ]
+
+            ayon_col.label(text="Product Type", icon='SHADERFX')
+            prod_row = ayon_col.row(align=True)
+            if filtered_creators:
+                for entry in filtered_creators:
+                    is_selected = props.ayon_creator_id == entry["id"]
+                    op = prod_row.operator(
+                        "playblastplus.set_ayon_creator",
+                        text=entry["label"],
+                        depress=is_selected,
+                    )
+                    op.creator_id = entry["id"]
+            else:
+                no_cr_row = ayon_col.row(align=True)
+                no_cr_row.alert = True
+                no_cr_row.label(
+                    text="Creators not configured — open Preferences",
+                    icon='ERROR',
+                )
+                no_cr_row.operator(
+                    "playblastplus.open_preferences",
+                    text="",
+                    icon='PREFERENCES',
+                )
+
+            ayon_col.separator(factor=0.3)
+
+            # ── Variant field ─────────────────────────────────────────────
+            var_row = ayon_col.row(align=True)
+            var_row.prop(props, "ayon_variant", text="Variant")
+            var_row.menu("PLAYBLASTPLUS_MT_variant_menu", text="", icon='DOWNARROW_HLT')
+
+            ayon_col.separator(factor=0.3)
+
+            # ── Publish button ────────────────────────────────────────────
             is_publishing = bool(_ayon_publish_procs)
+
+            # file must be in the current media type's cache (not just non-empty)
+            file_in_cache = bool(selected_file) and any(
+                (e.get("path") or e.get("pattern", "")) == selected_file
+                for e in entries
+            )
+            # creator must be valid for the current media type (in filtered list)
+            creator_valid = bool(filtered_creators) and (
+                props.ayon_creator_id in {c["id"] for c in filtered_creators}
+            )
+            variant_set = bool(props.ayon_variant.strip())
+
+            can_publish = (
+                file_in_cache
+                and creator_valid
+                and variant_set
+                and not is_publishing
+                and not (media_type == 'SEQUENCE' and not prefs.keep_images)
+            )
 
             pub_row = ayon_col.row(align=True)
             pub_row.scale_y = 1.6
-            pub_row.enabled = has_last and bool(props.ayon_creator_id) and not is_publishing
+            pub_row.enabled = can_publish
             pub_row.operator(
                 "playblastplus.ayon_publish",
-                text="Publish Review",
+                text="Publish to AYON",
                 **get_icon_id("ayon"),
             )
 
-            # ── Publish status ─────────────────────────────────────────
+            # ── Publish status ────────────────────────────────────────────
             if is_publishing:
                 ayon_col.separator(factor=0.3)
                 prog_row = ayon_col.row(align=True)
@@ -325,8 +446,10 @@ class PLAYBLASTPLUS_PT_main(Panel):
                 res_col.scale_y = 0.8
                 res_col.enabled = False
                 if _ayon_last_publish_result["success"]:
+                    pub_info = _ayon_last_publish_result.get("pub_info", "")
+                    display  = pub_info if pub_info else _ayon_last_publish_result["label"]
                     res_col.label(
-                        text=f"Published: {_ayon_last_publish_result['label']}",
+                        text=f"Published: {display}",
                         icon='CHECKMARK',
                     )
                 else:
@@ -344,6 +467,8 @@ class PLAYBLASTPLUS_PT_main(Panel):
 _CLASSES = [
     PLAYBLASTPLUS_MT_token_menu,
     PLAYBLASTPLUS_MT_creator_menu,
+    PLAYBLASTPLUS_MT_media_file_menu,
+    PLAYBLASTPLUS_MT_variant_menu,
     VIEW3D_MT_playblastplus,
     PLAYBLASTPLUS_PT_main,
 ]

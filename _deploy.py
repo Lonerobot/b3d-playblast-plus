@@ -27,6 +27,7 @@ ADDON_NAME = "playblast_plus"
 IGNORE = [
     ".git",
     ".github",
+    "logs",
     "__pycache__",
     ".gitignore",
     "README.md",

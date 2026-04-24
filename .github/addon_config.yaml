@@ -1,0 +1,8 @@
+debug: true
+
+api:
+  ayon_url: "http://localhost:5000"
+  timeout: 10
+
+paths:
+  cache_dir: "/tmp/blender_addon_cache"

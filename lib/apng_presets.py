@@ -1,23 +1,21 @@
 """
 APNG preset loader.
 
-Presets are defined in apng-presets.json at the add-on root.
-Edit that file manually to add, remove, or adjust presets.
+Presets are defined under the ``apng_presets`` key in ``config.json`` at the
+add-on root.  Edit that file to add, remove, or adjust presets.
 
-Each preset entry:
-  {
-    "name":      str   — unique identifier used as EnumProperty value
-    "label":     str   — human-readable name shown in the dropdown
-    "width":     int   — render resolution X
-    "height":    int   — render resolution Y
-    "framerate": int   — scene frame rate
-  }
+Each preset entry::
+
+    {
+      "name":      str  — unique identifier used as EnumProperty value
+      "label":     str  — human-readable name shown in the dropdown
+      "width":     int  — render resolution X
+      "height":    int  — render resolution Y
+      "framerate": int  — scene frame rate
+    }
+
+Note: ``apng-presets.json`` is deprecated in favour of ``config.json``.
 """
-
-import json
-from pathlib import Path
-
-_PRESETS_FILE = Path(__file__).parent.parent / "apng-presets.json"
 
 # Blender requires that EnumProperty items callbacks return a list whose
 # strings stay alive (no GC). We keep a module-level cache for this.
@@ -25,14 +23,12 @@ _enum_cache: list = []
 
 
 def load_presets() -> list:
-    """Read presets from apng-presets.json. Returns an empty list on any error."""
-    if not _PRESETS_FILE.is_file():
-        return []
+    """Read presets from config.json (apng_presets key). Falls back to built-in defaults."""
     try:
-        data = json.loads(_PRESETS_FILE.read_text(encoding="utf-8"))
-        return data.get("presets", [])
+        from .ayon_config import load_apng_presets
+        return load_apng_presets()
     except Exception as exc:
-        print(f"[PlayblastPlus] Could not load apng-presets.json: {exc}")
+        print(f"[PlayblastPlus] Could not load APNG presets from config: {exc}")
         return []
 
 
@@ -54,7 +50,7 @@ def enum_items(_self=None, _context=None) -> list:
     presets = load_presets()
     if not presets:
         _enum_cache = [
-            ("NONE", "No presets", "Add presets to apng-presets.json in the add-on folder"),
+            ("NONE", "No presets", "Add presets under apng_presets in config.json"),
         ]
         return _enum_cache
 

@@ -1,3 +1,5 @@
+import os
+
 import bpy
 from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
 
@@ -143,6 +145,39 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
                 col2.label(text="https://tinify.com/developers", icon='URL') 
                 col2.prop(self, "apng_tinify_key")
             col2.prop(self, "apng_timeout")
+
+        # ── AYON Integration ──────────────────────────────────────────
+        box = layout.box()
+        col = box.column(align=True)
+        col.label(text="AYON Integration", icon='URL')
+
+        from .lib.ayon_config import load_creators
+        creators = load_creators()
+
+        if creators:
+            row = col.row()
+            row.label(text=f"{len(creators)} creator(s) configured:", icon='CHECKMARK')
+            for c in creators:
+                entry_row = col.row()
+                entry_row.enabled = False
+                entry_row.label(text=f"    {c.get('label', c['id'])}  —  {c['id']}", icon='NONE')
+        else:
+            warn = col.column(align=True)
+            warn.alert = True
+            warn.label(text="No AYON creators configured.", icon='ERROR')
+            warn.label(text="Launch Blender from the AYON launcher, then click 'Probe Creators'.")
+
+        col.separator(factor=0.5)
+        if os.getenv("AYON_PROJECT_NAME"):
+            col.operator(
+                "playblastplus.refresh_ayon_creators",
+                text="Probe Creators",
+                icon='FILE_REFRESH',
+            )
+        else:
+            sub = col.column(align=True)
+            sub.enabled = False
+            sub.label(text="Launch Blender via the AYON launcher to enable probing.", icon='INFO')
 
 
 def register():

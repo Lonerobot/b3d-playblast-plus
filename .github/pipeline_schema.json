@@ -1,0 +1,9 @@
+{
+  "assets": {
+    "characters": "/projects/{project}/assets/characters/{name}",
+    "props": "/projects/{project}/assets/props/{name}"
+  },
+  "renders": {
+    "output": "/projects/{project}/renders/{shot}/{version}"
+  }
+}
