@@ -142,11 +142,18 @@ class PLAYBLASTPLUS_PT_main(Panel):
         box = layout.box()
         col = box.column(align=True)
         ayon = os.getenv("AYON_PROJECT_NAME")
+        header_row = col.row(align=True)
         if ayon:
             icon = get_icon_id("ayon")
-            col.label(text="Playblast Plus — Animation Review", **icon)
+            header_row.label(text="Playblast Plus — Animation Review", **icon)
         else:
-            col.label(text="Playblast Plus — Animation Review", icon='RENDER_ANIMATION')
+            header_row.label(text="Playblast Plus — Animation Review", icon='RENDER_ANIMATION')
+        header_row.operator(
+            "playblastplus.open_preferences",
+            text="",
+            icon='PREFERENCES',
+            emboss=False,
+        )
         col.separator(factor=0.4)
         sub = col.column(align=True)
         sub.scale_y = 0.75
@@ -294,13 +301,7 @@ class PLAYBLASTPLUS_PT_main(Panel):
             # Section header
             header_row = ayon_col.row(align=True)
             ayon_icon = get_icon_id("ayon")
-            header_row.label(text="Publish to AYON", **ayon_icon)
-            header_row.operator(
-                "playblastplus.open_preferences",
-                text="",
-                icon='PREFERENCES',
-                emboss=False,
-            )
+            header_row.label(text="Publish Playblast to AYON", **ayon_icon)
 
             ayon_col.separator(factor=0.5)
 

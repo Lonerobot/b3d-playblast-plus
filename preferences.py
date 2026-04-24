@@ -165,13 +165,16 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
             warn = col.column(align=True)
             warn.alert = True
             warn.label(text="No AYON creators configured.", icon='ERROR')
-            warn.label(text="Launch Blender from the AYON launcher, then click 'Probe Creators'.")
+            warn.alert = False
+            warn.label(text="Click 'Get Publish Creators' to retrieve the publish types for your AYON instance.")
+            warn.label(text="You can align these to the file types above, along with default")
+            warn.label(text="variants in the config.json file in the add-on folder.", icon='INFO')
 
         col.separator(factor=0.5)
         if os.getenv("AYON_PROJECT_NAME"):
             col.operator(
                 "playblastplus.refresh_ayon_creators",
-                text="Probe Creators",
+                text="Get Publish Creators",
                 icon='FILE_REFRESH',
             )
         else:

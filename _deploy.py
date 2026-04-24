@@ -25,18 +25,29 @@ if not DEPLOY:
 
 ADDON_NAME = "playblast_plus"
 IGNORE = [
+    # repo/tooling — never shipped
     ".git",
     ".github",
-    "logs",
-    "__pycache__",
     ".gitignore",
-    "README.md",
-    "_deploy.py",
     ".env",
     ".env.example",
+    ".tests",
     "tinify.key",
+    "_deploy.py",
+    "README.md",
+    # deprecated / superseded by config.json
+    "apng-presets.json",
+    # dev/test scripts
+    "test_ayon_probe.py",
+    "test_ayon_version_stream.py",
+    # runtime-generated artefacts
+    "logs",
+    "__pycache__",
+    # build output and unused runtime dirs
+    "releases",
+    "bin",
+    "image",
 ]
-
 
 def bump_version(level="patch"):
     import re
