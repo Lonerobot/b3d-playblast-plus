@@ -28,13 +28,22 @@ class Parsing:
             return None
         img_start = Path(img_start)
         file_name = img_start.name
-        # Anchor to end: match the frame-number digits immediately before .png
-        # This avoids mis-matching Blender's object version suffixes (.001, .002)
-        m = re.search(r"(\d+)\.png$", file_name, re.IGNORECASE)
+        # Anchor to end: match an optional leading minus and the frame-number
+        # digits immediately before .png.  The minus is included in the capture
+        # group so that the width of the %0Nd replacement mirrors the full field
+        # width (sign + digits) that Blender and FFmpeg both use.
+        m = re.search(r"(-?\d+)\.png$", file_name, re.IGNORECASE)
         if m:
-            digits = m.group(1)
-            pad_len = len(digits)
-            ffmpeg_input = file_name[:m.start(1)] + f"%0{pad_len}d" + ".png"
+            frame_str = m.group(1)
+            is_negative = frame_str.startswith('-')
+            digits = frame_str.lstrip('-')
+            # For negative frames Blender outputs e.g. shot.-0005.png (minus +
+            # 4 zero-padded digits = 5 chars total).  printf/FFmpeg %05d for -5
+            # also produces "-0005", so pad_len must include the sign character.
+            pad_len = len(digits) + (1 if is_negative else 0)
+            # Preserve the original extension case (.png, .PNG, etc.)
+            ext = file_name[m.end(1):]
+            ffmpeg_input = file_name[:m.start(1)] + f"%0{pad_len}d" + ext
             return str(img_start.parent / ffmpeg_input)
         return None
 

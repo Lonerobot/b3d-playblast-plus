@@ -64,8 +64,9 @@ class Blender_Scene(Scene):
         return bpy.context.scene.frame_current
 
     @staticmethod
-    def getFrameRate() -> int:
-        return bpy.context.scene.render.fps
+    def getFrameRate() -> float:
+        render = bpy.context.scene.render
+        return render.fps / render.fps_base
 
     @staticmethod
     def getFrameRange() -> tuple:
