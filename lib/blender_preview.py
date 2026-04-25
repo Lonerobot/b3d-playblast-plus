@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import bpy
 
@@ -272,7 +273,13 @@ class BlenderPreview(PreviewRender):
 
         output_dir = Path(filename).parent
         stem = Path(filename).name
-        frames = sorted(output_dir.glob(f'{stem}.????.png'))
+        # Match 4-or-more-digit positive frames (e.g. .0001.png) and 5-char
+        # negative frames (e.g. .-0001.png) produced by Blender for negative start frames.
+        _frame_re = re.compile(r"-?\d{4,}$")
+        frames = sorted(
+            f for f in output_dir.glob(f"{stem}.*.png")
+            if _frame_re.fullmatch(f.stem.rsplit(".", 1)[-1])
+        )
 
         if frames:
             return Parsing.create_ffmpeg_input(str(frames[0]))

@@ -34,7 +34,7 @@ tokens.register_token(
 )
 
 # ── AYON tokens — only registered when running inside an AYON pipeline ──────
-if os.getenv("AYON_PROJECT_NAME") and os.getenv("AYON_WORKDIR"):
+if os.getenv("AYON_PROJECT_NAME"):
     tokens.register_token(
         "<ayon_project>",
         lambda options: os.getenv("AYON_PROJECT_NAME", ""),

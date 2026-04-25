@@ -5,9 +5,32 @@ zero dependency on the parent playblast_plus package or its settings.
 """
 
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
+
+
+def _shell_quote(path: str) -> str:
+    """Return a safely shell-quoted path for use in a ``shell=True`` command.
+
+    On POSIX, :func:`shlex.quote` is used so that spaces and shell
+    metacharacters in the path cannot be interpreted by the shell.
+
+    On Windows, the path is wrapped in double-quotes after stripping any
+    embedded double-quote characters.  Double-quotes are not legal in Windows
+    file or directory names and cannot appear in user-supplied paths through
+    normal means.
+
+    Args:
+        path (str): Filesystem path to quote.
+
+    Returns:
+        str: Shell-safe quoted path string.
+    """
+    if sys.platform == "win32":
+        return '"' + path.replace('"', '') + '"'
+    return shlex.quote(path)
 
 
 # Default encode settings — can be overridden per call
@@ -80,7 +103,7 @@ def mp4_from_image_sequence(
             f'box=1: boxcolor=black@0.5: boxborderw=2"'
         )
 
-    audio_input = f' -i "{audio_path}" ' if audio_path else ""
+    audio_input = f' -i {_shell_quote(audio_path)} ' if audio_path else ""
     audio_params = (
         ' -c:a aac -filter_complex "[1:0] apad" -shortest '
         if audio_path
@@ -88,18 +111,18 @@ def mp4_from_image_sequence(
     )
 
     cmd = (
-        f'"{ffmpeg_path}" '
+        f'{_shell_quote(ffmpeg_path)} '
         f"-framerate {framerate} "
         f"-y "
         f"-start_number {start_frame} "
         f"-loglevel quiet "
-        f'-i "{image_seq_path}" '
+        f'-i {_shell_quote(image_seq_path)} '
         f"{burnin} "
         f"{audio_input}"
         f"{input_args} "
         f"{audio_params}"
         f"-frames:v {end_frame} "
-        f'"{output_path}"'
+        f'{_shell_quote(output_path)}'
     )
 
     print(f"[PlayblastPlus] encode: {cmd}")
