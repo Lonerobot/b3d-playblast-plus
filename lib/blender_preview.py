@@ -74,6 +74,8 @@ class BlenderPreview(PreviewRender):
         if cam and cam.data:
             self._saved_state['show_background_images'] = cam.data.show_background_images
 
+        self._saved_state['film_transparent'] = bpy.context.scene.render.film_transparent
+
     def _restore_state(self):
         render = bpy.context.scene.render
         s = self._saved_state
@@ -121,6 +123,9 @@ class BlenderPreview(PreviewRender):
             cam = bpy.context.scene.camera
             if cam and cam.data:
                 cam.data.show_background_images = s['show_background_images']
+
+        if 'film_transparent' in s:
+            bpy.context.scene.render.film_transparent = s['film_transparent']
 
     # ------------------------------------------------------------------
     # PreviewRender interface
@@ -234,6 +239,11 @@ class BlenderPreview(PreviewRender):
             cam = bpy.context.scene.camera
             if cam and cam.data:
                 cam.data.show_background_images = True
+            # Disable film transparency so the viewport renders a solid background
+            # behind the camera background images.  When film_transparent is True
+            # Blender 5.x honours it for OpenGL viewport renders, producing a
+            # fully-transparent (invisible) background even in bg-only mode.
+            bpy.context.scene.render.film_transparent = False
         elif overlay_mode == 'OFF':
             cam = bpy.context.scene.camera
             if cam and cam.data:
