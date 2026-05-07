@@ -50,6 +50,9 @@ class PLAYBLASTPLUS_OT_run(Operator):
         # Capture
         # ------------------------------------------------------------------
         renderer = BlenderPreview()
+        # Capture film_transparent before any state changes so the restore
+        # below always reflects the user's original setting.
+        _orig_film_transparent = context.scene.render.film_transparent
         renderer.pre_process()
         renderer.set_override_properties(
             camera=props.camera,
@@ -62,7 +65,6 @@ class PLAYBLASTPLUS_OT_run(Operator):
         )
 
         # Apply transparency override for APNG if requested
-        _orig_film_transparent = context.scene.render.film_transparent
         if prefs.output_format == 'APNG' and prefs.apng_transparent:
             context.scene.render.film_transparent = True
             context.scene.render.image_settings.color_mode = 'RGBA'
