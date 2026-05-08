@@ -6,7 +6,7 @@
 
 > A dedicated Blender addon port of [Playblast Plus for Maya/3ds Max](https://github.com/TheLineAnimation/playblast-plus) — capture a quick, un-rendered viewport animation directly from Blender's 3D Viewport and encode it to MP4 via FFmpeg.
 
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![FFmpeg](https://shields.io/badge/FFmpeg-%23171717.svg?logo=ffmpeg&style=for-the-badge&labelColor=171717&logoColor=5cb85c) ![Blender](https://img.shields.io/badge/Blender-4.2%2B-orange?style=for-the-badge&logo=blender&logoColor=white) ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue?style=for-the-badge)
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![FFmpeg](https://shields.io/badge/FFmpeg-%23171717.svg?logo=ffmpeg&style=for-the-badge&labelColor=171717&logoColor=5cb85c) ![Blender](https://img.shields.io/badge/Blender-4.0%2B-orange?style=for-the-badge&logo=blender&logoColor=white) ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue?style=for-the-badge)
 
 ---
 
@@ -29,16 +29,18 @@ The right call was a clean, idiomatic Blender addon using native `bpy.types.Pane
 - Shading and overlay overrides per capture
 - Basic burn-in overlay support (MP4 mode) showing filename and frame counter.
 - Half-resolution capture option
-- AYON pipeline integration — extra tokens registered automatically when AYON env vars are detected.
+- **AYON pipeline integration** — media discovery, creator selection, and publishing directly from the addon panel
 - Experimental **APNG output** mode (see below)
 
 ---
 
 ## Installation
 
+**Latest release:** [github.com/Lonerobot/b3d-playblast-plus/releases](https://github.com/Lonerobot/b3d-playblast-plus/releases)
+
 ### From zip (recommended)
 
-1. Download the release or build a `.zip` of this repository.
+1. Download the latest `.zip` from the [releases page](https://github.com/Lonerobot/b3d-playblast-plus/releases)
 2. In Blender: **Edit → Preferences → Add-ons → Install from Disk**
 3. Enable **Playblast Plus** in the add-ons list
 
@@ -46,7 +48,7 @@ The right call was a clean, idiomatic Blender addon using native `bpy.types.Pane
 
 Clone the repo and copy the folder into your Blender addons directory, or use `_deploy.py` (see [Developer setup](#developer-setup) below).
 
-**Requires Blender 4.2 or later.**
+**Requires Blender 4.0 or later.**
 
 ---
 
@@ -65,7 +67,45 @@ You can specify a particular build of FFmpeg in the Addon preferences.
 
 ---
 
-## Experimental: APNG output
+## AYON Pipeline Integration
+
+When launched from AYON (via `AYON_PROJECT_NAME` environment variable), the addon provides a complete publishing workflow:
+
+### Features
+
+- **Media Discovery** — automatically detects MP4s, PNG frame sequences, and still images in your playblast output folders
+- **Creator Probing** — retrieves available AYON creators via subprocess (avoids import conflicts)
+- **Media Selection UI** — choose between MP4 video, image sequence, or still image with file/sequence browser
+- **Dynamic Filtering** — product types and variants are filtered based on media type selection
+- **Status Tracking** — publish results displayed with success/error popups
+
+### Publishing Workflow
+
+1. Open the **AYON Publish** tab in the Playblast Plus panel
+2. Select **Media Type** (MP4, Image Sequence, or Still Image)
+3. Select a **File/Sequence** from the discovery list (click **Refresh** to re-scan)
+4. Choose a **Product Type** (filtered by media type)
+5. Select a **Variant**
+6. Click **Publish** — the addon handles context propagation to AYON's publishing system
+
+### Configuration
+
+Edit `config.json` to customize AYON creators, publish variants, and product filtering:
+
+```json
+{
+  "ayon_creators": [
+    {"name": "review", "label": "Review"},
+    {"name": "render", "label": "Render"}
+  ],
+  "publish_variants": ["Main", "Turnaround"],
+  "media_type_rules": {
+    "MP4": ["review", "render"],
+    "SEQUENCE": ["review", "render"],
+    "IMAGE": ["review", "image"]
+  }
+}
+```
 
 A side project exploring whether viewport captures can be transcoded into an optimised **Animated PNG (APNG)** — a format that supports full alpha transparency and is natively supported in browsers and Discord without any codec negotiation.
 
@@ -95,13 +135,13 @@ Tinify isn't something you have to do, but it does make a huge difference to the
 > [!NOTE]
 > APNG assembly can be slow at higher resolutions. The **APNG Encode Timeout** preference (default 300 s) controls how long to wait before aborting.
 
-### apng-presets.json
+### config.json
 
-Edit `apng-presets.json` in the addon folder to add your own presets:
+The unified configuration file handles AYON creators, publish variants, APNG presets, and FFmpeg settings:
 
 ```json
 {
-  "presets": [
+  "apng_presets": [
     {
       "name": "my_preset",
       "label": "My Preset",
@@ -109,7 +149,9 @@ Edit `apng-presets.json` in the addon folder to add your own presets:
       "height": 512,
       "framerate": 12
     }
-  ]
+  ],
+  "ayon_creators": [...],
+  "publish_variants": [...]
 }
 ```
 
@@ -131,27 +173,35 @@ Presets appear in the panel dropdown. Selecting one **previews** the resolution 
 
 ```
 b3d-playblast-plus/
-├── __init__.py             # Addon entry point — register / unregister
-├── operators.py            # bpy.types.Operator subclasses
-├── preferences.py          # AddonPreferences subclass
-├── props.py                # Scene-level RNA properties
-├── ui.py                   # bpy.types.Panel / Menu subclasses
-├── blender_manifest.toml   # Extension manifest (Blender 4.2+)
-├── apng-presets.json       # Editable APNG resolution presets
-├── .env.example            # Template for local developer config
-├── _deploy.py              # Dev helper — version bump + local deploy
+├── __init__.py                    # Addon entry point — register / unregister
+├── operators.py                   # bpy.types.Operator subclasses
+├── preferences.py                 # AddonPreferences subclass
+├── props.py                       # Scene-level RNA properties
+├── ui.py                          # bpy.types.Panel / Menu subclasses
+├── blender_manifest.toml          # Extension manifest (Blender 4.0+)
+├── config.json                    # Unified config (AYON creators, variants, presets)
+├── .env.example                   # Template for local developer config
+├── _deploy.py                     # Dev helper — version bump / deploy / build
+├── .github/
+│   ├── dev_guidelines.md          # Development rules and conventions
+│   ├── copilot-agent.md           # Copilot agent config
+│   └── addon_config.yaml          # Example addon configuration
 └── lib/
-    ├── apng_presets.py     # APNG preset loader
-    ├── bases.py            # Shared base classes
+    ├── apng_presets.py            # APNG preset loader
+    ├── ayon_config.py             # AYON configuration system
+    ├── ayon_probe_creators.py      # Creator probing via subprocess
+    ├── ayon_publish.py            # Standalone AYON publisher
+    ├── bases.py                   # Shared base classes
     ├── blender_logger.py
-    ├── blender_preview.py  # Viewport capture logic
-    ├── blender_scene.py    # Scene / path helpers
+    ├── blender_preview.py         # Viewport capture logic + camera background fix
+    ├── blender_scene.py           # Scene / path helpers
     ├── custom_icons.py
-    ├── encode.py           # FFmpeg encode wrappers for MP4 and APNG
-    ├── ffmpeg_utils.py     # FFmpeg discovery and auto-install
-    ├── register_tokens.py  # Token registration (incl. AYON tokens)
-    ├── tinify_client.py    # Stdlib-only Tinify API client
-    ├── tokens.py           # Token system
+    ├── encode.py                  # FFmpeg encode wrappers for MP4 and APNG
+    ├── ffmpeg_utils.py            # FFmpeg discovery and auto-install
+    ├── media_discovery.py         # Media file discovery and sequence parsing
+    ├── register_tokens.py         # Token registration (incl. AYON tokens)
+    ├── tinify_client.py           # Stdlib-only Tinify API client
+    ├── tokens.py                  # Token system
     └── utils.py
 ```
 
@@ -163,16 +213,21 @@ Copy `.env.example` to `.env` and fill in your local paths:
 
 ```
 DEPLOY_PATH=C:\path\to\blender\addons
+BLENDER_EXE=C:\Program Files\Blender Foundation\Blender 4.5\blender.exe
 TINIFY_API_KEY=your_key_here
 ```
 
-Then run `_deploy.py` to bump the version and copy the addon to your Blender install:
+Then run `_deploy.py` with the desired command and version level:
 
-```
-python _deploy.py          # patch bump (default)
-python _deploy.py minor    # minor bump
-python _deploy.py major    # major bump
-python _deploy.py skip     # deploy without version bump
+```bash
+# Deploy to local Blender addons directory
+python _deploy.py deploy patch    # patch bump (default)
+python _deploy.py deploy minor    # minor bump
+python _deploy.py deploy major    # major bump
+python _deploy.py deploy skip     # deploy without version bump
+
+# Build Blender extension (.zip)
+python _deploy.py build           # requires BLENDER_EXE in .env
 ```
 
 `.env` is git-ignored and will never be committed.
