@@ -51,8 +51,11 @@ class TestExtractVersionFromStem:
         assert extract_version_from_stem("") == ""
 
     def test_five_digits_not_matched(self):
-        # The regex matches at most 4 digits, so 'v00001' captures 'v0000'
-        # (the 5th digit falls outside the {1,4} quantifier).
+        # Version numbers longer than 4 digits are outside the supported range.
+        # The regex {1,4} stops at 4 digits, so 'v00001' yields 'v0000'
+        # (the 5th digit is not captured). This is intentional — VFX filenames
+        # rarely exceed v9999, and capturing a partial match is preferable to
+        # silently returning no version at all.
         assert extract_version_from_stem("shot_v00001") == "v0000"
 
     def test_vfx_prefix_not_confused_with_version(self):

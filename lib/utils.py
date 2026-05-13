@@ -15,6 +15,11 @@ def extract_version_from_stem(stem: str) -> str:
     Looks for the first occurrence of a ``v``/``V`` prefix followed by 1–4
     digits (e.g. ``v1``, ``v01``, ``v001``, ``V0023``).
 
+    When the stem contains more than 4 digits after the version prefix (e.g.
+    ``v00001``), only the first 4 digits are captured — the match stops at the
+    4-digit boundary.  Version numbers longer than 4 digits are outside the
+    expected range for this tool (VFX filenames rarely exceed ``v9999``).
+
     Args:
         stem (str): Filename stem (no directory, no extension).
 
@@ -28,7 +33,7 @@ def extract_version_from_stem(stem: str) -> str:
     return m.group(0) if m else ""
 
 
-def parse_suffixes(csv: str) -> list:
+def parse_suffixes(csv: str) -> list[str]:
     """Parse a comma-separated string of predefined suffix values.
 
     Args:
