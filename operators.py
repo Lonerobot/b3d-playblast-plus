@@ -45,6 +45,8 @@ class PLAYBLASTPLUS_OT_run(Operator):
         output_dir = Blender_Scene.get_output_dir()
         temp_dir   = Blender_Scene.get_temp_capture_dir()
         output_name = tokens.format_tokens(props.output_token, None) or "playblast"
+        if props.output_suffix and props.output_suffix != "None":
+            output_name = f"{output_name}_{props.output_suffix}"
 
         # ------------------------------------------------------------------
         # Capture
@@ -194,6 +196,8 @@ class PLAYBLASTPLUS_OT_snapshot(Operator):
         captures_dir.mkdir(exist_ok=True)
 
         output_name = tokens.format_tokens(props.output_token, None) or "playblast"
+        if props.output_suffix and props.output_suffix != "None":
+            output_name = f"{output_name}_{props.output_suffix}"
         frame_str   = str(Blender_Scene.current_frame()).zfill(4)
 
         renderer = BlenderPreview()
@@ -244,6 +248,19 @@ class PLAYBLASTPLUS_OT_set_ayon_variant(Operator):
 
     def execute(self, context):
         context.scene.playblast_plus.ayon_variant = self.variant
+        return {'FINISHED'}
+
+
+class PLAYBLASTPLUS_OT_set_suffix(Operator):
+    """Set the predefined output name suffix"""
+    bl_idname = "playblastplus.set_suffix"
+    bl_label = "Set Suffix"
+    bl_description = "Apply this predefined suffix to the output filename"
+
+    suffix: bpy.props.StringProperty(name="Suffix")
+
+    def execute(self, context):
+        context.scene.playblast_plus.output_suffix = self.suffix
         return {'FINISHED'}
 
 
@@ -837,6 +854,7 @@ _CLASSES = [
     PLAYBLASTPLUS_OT_snapshot,
     PLAYBLASTPLUS_OT_insert_token,
     PLAYBLASTPLUS_OT_set_ayon_variant,
+    PLAYBLASTPLUS_OT_set_suffix,
     PLAYBLASTPLUS_OT_open_output,
     PLAYBLASTPLUS_OT_open_last,
     PLAYBLASTPLUS_OT_apply_apng_preset,

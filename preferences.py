@@ -26,6 +26,15 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         default="<scene>_<camera>",
     )
 
+    output_suffixes: StringProperty(
+        name="Output Suffixes",
+        description=(
+            "Comma-separated list of predefined output name suffixes. "
+            "The first entry ('None' by default) means no suffix is added"
+        ),
+        default="None,Chalk,Turnaround,Rig,Anim",
+    )
+
     encode_args: StringProperty(
         name="Encode Arguments",
         description="FFmpeg video codec arguments inserted between input and output",
@@ -129,6 +138,7 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         col = box.column(align=True)
         col.label(text="Output", icon='OUTPUT')
         col.prop(self, "default_output_token")
+        col.prop(self, "output_suffixes")
         col.prop(self, "keep_images")
         col.separator(factor=0.5)
         col.prop(self, "output_format")

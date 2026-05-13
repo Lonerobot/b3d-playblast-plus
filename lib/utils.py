@@ -9,6 +9,37 @@ import sys
 from pathlib import Path
 
 
+def extract_version_from_stem(stem: str) -> str:
+    """Extract a version string from a file stem.
+
+    Looks for the first occurrence of a ``v``/``V`` prefix followed by 1–4
+    digits (e.g. ``v1``, ``v01``, ``v001``, ``V0023``).
+
+    Args:
+        stem (str): Filename stem (no directory, no extension).
+
+    Returns:
+        str: The matched version token (e.g. ``"v001"``), or ``""`` when no
+             version pattern is found.
+    """
+    if not stem:
+        return ""
+    m = re.search(r'[vV]\d{1,4}', stem)
+    return m.group(0) if m else ""
+
+
+def parse_suffixes(csv: str) -> list:
+    """Parse a comma-separated string of predefined suffix values.
+
+    Args:
+        csv (str): Comma-separated suffix entries (e.g. ``"None,Chalk,Rig"``).
+
+    Returns:
+        list[str]: Non-empty, stripped entries in their original order.
+    """
+    return [s.strip() for s in csv.split(",") if s.strip()]
+
+
 class Parsing:
 
     @staticmethod
