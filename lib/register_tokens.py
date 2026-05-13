@@ -35,12 +35,15 @@ tokens.register_token(
     label="Active view layer",
 )
 
+def _resolve_version(options) -> str:
+    import bpy
+    fp = bpy.data.filepath
+    return extract_version_from_stem(Path(fp).stem if fp else "")
+
+
 tokens.register_token(
     "<version>",
-    lambda options: extract_version_from_stem(
-        Path(__import__('bpy').data.filepath).stem
-        if __import__('bpy').data.filepath else ""
-    ),
+    _resolve_version,
     label="Version string from blend file name (e.g. v001)",
 )
 

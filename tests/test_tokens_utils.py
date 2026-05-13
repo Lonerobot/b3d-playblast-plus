@@ -51,11 +51,9 @@ class TestExtractVersionFromStem:
         assert extract_version_from_stem("") == ""
 
     def test_five_digits_not_matched(self):
-        # 5-digit sequences should NOT match (1–4 digits only).
-        # The regex will match the first 4 digits, so v00001 -> "v0000".
-        # Verify that at most 4 digits are captured.
-        result = extract_version_from_stem("shot_v00001")
-        assert len(result) <= 5  # v + up to 4 digits
+        # The regex matches at most 4 digits, so 'v00001' captures 'v0000'
+        # (the 5th digit falls outside the {1,4} quantifier).
+        assert extract_version_from_stem("shot_v00001") == "v0000"
 
     def test_vfx_prefix_not_confused_with_version(self):
         # 'vfx' starts with 'v' but is not followed by digits — no match.
