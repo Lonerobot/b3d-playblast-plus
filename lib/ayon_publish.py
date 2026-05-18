@@ -129,16 +129,10 @@ class AyonPlayblastPublisher:
         file_item_dict = file_items[0].to_dict()
         print(f"[ayon_publish] file_item_dict: {file_item_dict}")
 
-        # settings_review uses FileDefAttr (single dict) for representation_files.
-        # settings_image / settings_render use FilesDefAttr (list) — passing a bare
-        # dict is silently discarded, leaving the default [].  Wrap accordingly.
-        if self.creator_id == "settings_review":
-            representation_files_value = file_item_dict
-        else:
-            representation_files_value = [file_item_dict]
-
+        # All creators (including settings_review) expect representation_files as a list.
+        # Passing a bare dict is silently discarded by AYON, leaving the default [].
         pre_create_data = {
-            "representation_files": representation_files_value,
+            "representation_files": [file_item_dict],
             "reviewable": file_item_dict,
         }
 
