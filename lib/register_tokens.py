@@ -4,9 +4,11 @@ This module is kept for backwards compatibility. Tokens are also registered
 directly in __init__.py when the extension loads.
 """
 import os
+from pathlib import Path
 
 from . import tokens
 from .blender_scene import Blender_Scene
+from .utils import extract_version_from_stem
 
 
 tokens.register_token(
@@ -31,6 +33,18 @@ tokens.register_token(
     "<viewlayer>",
     lambda options: __import__('bpy').context.view_layer.name,
     label="Active view layer",
+)
+
+def _resolve_version(options) -> str:
+    import bpy
+    fp = bpy.data.filepath
+    return extract_version_from_stem(Path(fp).stem if fp else "")
+
+
+tokens.register_token(
+    "<version>",
+    _resolve_version,
+    label="Version string from blend file name (e.g. v001)",
 )
 
 # ── AYON tokens — only registered when running inside an AYON pipeline ──────

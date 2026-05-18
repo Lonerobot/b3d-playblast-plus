@@ -42,6 +42,15 @@ class PlayblastPlusProps(bpy.types.PropertyGroup):
         default="<scene>_<user>_<camera>",
     )
 
+    output_suffix: StringProperty(
+        name="Suffix",
+        description=(
+            "Predefined suffix appended to the output filename with an underscore. "
+            "Select 'None' to add no suffix"
+        ),
+        default="None",
+    )
+
     camera: EnumProperty(
         name="Camera",
         description="Camera to use for the viewport render — switches the viewport immediately",
