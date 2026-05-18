@@ -101,6 +101,7 @@ class PLAYBLASTPLUS_OT_run(Operator):
                 end_frame=frame_count,
                 post_open=not (prefs.apng_tinify and prefs.apng_tinify_key),
                 timeout=prefs.apng_timeout,
+                player_path=prefs.media_player_path,
             )
             if not ok and not Path(output_path).is_file():
                 self.report({'ERROR'}, "PlayblastPlus: APNG encode failed or timed out. Increase 'APNG Encode Timeout' in add-on preferences if needed.")
@@ -145,6 +146,7 @@ class PLAYBLASTPLUS_OT_run(Operator):
                 burnin_text=output_name,
                 post_open=True,
                 input_args=prefs.encode_args,
+                player_path=prefs.media_player_path,
             )
 
         if not ok:
@@ -271,7 +273,13 @@ class PLAYBLASTPLUS_OT_open_last(Operator):
     def execute(self, context):
         last = context.scene.playblast_plus.last_playblast
         if last and Path(last).is_file():
-            encode.open_media_file(last)
+            prefs = context.preferences.addons[__package__].preferences
+            ext = Path(last).suffix.lower()
+            if ext in {'.png', '.jpg', '.jpeg', '.exr', '.tiff', '.tif'}:
+                player_path = prefs.image_player_path
+            else:
+                player_path = prefs.media_player_path
+            encode.open_media_file(last, player_path=player_path)
         else:
             self.report({'WARNING'}, "PlayblastPlus: no playblast file found.")
         return {'FINISHED'}

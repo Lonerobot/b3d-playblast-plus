@@ -91,6 +91,26 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         items=apng_presets.enum_items,
     )
 
+    media_player_path: StringProperty(
+        name="Media Review Player",
+        description=(
+            "Path to the executable used to open video playblasts (MP4, APNG). "
+            "Leave blank to use the OS default. DJV2 is recommended — see https://github.com/grizzlypeak3d/DJV"
+        ),
+        default="",
+        subtype='FILE_PATH',
+    )
+
+    image_player_path: StringProperty(
+        name="Image Review Player",
+        description=(
+            "Path to the executable used to open still-image captures (PNG). "
+            "Leave blank to use the OS default. DJV2 is recommended — see https://github.com/grizzlypeak3d/DJV"
+        ),
+        default="",
+        subtype='FILE_PATH',
+    )
+
     def draw(self, context):
         layout = self.layout
 
@@ -111,6 +131,20 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
 
         col.prop(self, "ffmpeg_path")
         col.separator(factor=0.3)
+
+        # Show additional search paths from config.json
+        from .lib.ayon_config import load_ffmpeg_search_paths
+        search_paths = load_ffmpeg_search_paths()
+        if search_paths:
+            sub = col.column(align=True)
+            sub.scale_y = 0.75
+            sub.label(text="Additional search paths (edit config.json to change):")
+            for sp in search_paths:
+                row = sub.row()
+                row.enabled = False
+                row.label(text=sp, icon='NONE')
+            col.separator(factor=0.3)
+
         sub = col.column(align=True)
         sub.scale_y = 0.75
         sub.label(text="Download URL (leave blank for platform default):")
@@ -145,6 +179,24 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
                 col2.label(text="https://tinify.com/developers", icon='URL') 
                 col2.prop(self, "apng_tinify_key")
             col2.prop(self, "apng_timeout")
+
+        # ── Viewer ────────────────────────────────────────────────────
+        box = layout.box()
+        col = box.column(align=True)
+        col.label(text="Viewer", icon='HIDE_OFF')
+        col.label(text="DJV2 is the recommended media viewer for playblast review.")
+        col.label(text="https://github.com/grizzlypeak3d/DJV", icon='URL')
+        col.separator(factor=0.3)
+        col.prop(self, "media_player_path")
+        if not self.media_player_path:
+            hint = col.row()
+            hint.enabled = False
+            hint.label(text="(OS default — set a path to use a preferred viewer e.g. DJV2)")
+        col.prop(self, "image_player_path")
+        if not self.image_player_path:
+            hint = col.row()
+            hint.enabled = False
+            hint.label(text="(OS default — set a path to use a preferred viewer e.g. DJV2)")
 
         # ── AYON Integration ──────────────────────────────────────────
         box = layout.box()

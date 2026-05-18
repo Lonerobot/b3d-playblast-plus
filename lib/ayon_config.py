@@ -33,6 +33,20 @@ _DEFAULT_FFMPEG_URLS: dict = {
     "darwin": "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip",
 }
 
+_DEFAULT_FFMPEG_SEARCH_PATHS: list = [
+    "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe",
+    "C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe",
+    "C:\\ProgramData\\scoop\\apps\\ffmpeg\\current\\bin\\ffmpeg.exe",
+    "/usr/local/bin/ffmpeg",
+    "/opt/homebrew/bin/ffmpeg",
+    "/opt/homebrew/opt/ffmpeg/bin/ffmpeg",
+]
+
+_DEFAULT_PREFERRED_PLAYERS: dict = {
+    "media_review": "",
+    "image_review": "",
+}
+
 # ---------------------------------------------------------------------------
 # Internal I/O helpers
 # ---------------------------------------------------------------------------
@@ -102,3 +116,18 @@ def load_ffmpeg_urls() -> dict:
     """Return FFmpeg download URLs from config.json, falling back to built-in defaults."""
     raw = _read_raw()
     return raw.get("ffmpeg", {}).get("download_urls", _DEFAULT_FFMPEG_URLS)
+
+
+def load_ffmpeg_search_paths() -> list:
+    """Return additional FFmpeg search paths from config.json, falling back to built-in defaults."""
+    raw = _read_raw()
+    return raw.get("ffmpeg", {}).get("search_paths", _DEFAULT_FFMPEG_SEARCH_PATHS)
+
+
+def load_preferred_players() -> dict:
+    """Return preferred player paths from config.json, falling back to built-in defaults."""
+    raw = _read_raw()
+    players = raw.get("preferred_player", {})
+    result = dict(_DEFAULT_PREFERRED_PLAYERS)
+    result.update(players)
+    return result

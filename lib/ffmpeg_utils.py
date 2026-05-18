@@ -33,8 +33,9 @@ def find_ffmpeg(custom_path: str = "") -> str | None:
 
     Discovery order:
     1. *custom_path* from addon preferences (if non-empty and the file exists).
-    2. System PATH via ``shutil.which``.
-    3. Local ``<addon>/bin/ffmpeg[.exe]``.
+    2. Additional search paths from config.json ``ffmpeg.search_paths``.
+    3. System PATH via ``shutil.which``.
+    4. Local ``<addon>/bin/ffmpeg[.exe]``.
 
     Returns the absolute path string, or ``None`` if not found.
     """
@@ -42,6 +43,15 @@ def find_ffmpeg(custom_path: str = "") -> str | None:
         p = Path(custom_path)
         if p.is_file():
             return str(p)
+
+    try:
+        from .ayon_config import load_ffmpeg_search_paths
+        for candidate in load_ffmpeg_search_paths():
+            cp = Path(candidate)
+            if cp.is_file():
+                return str(cp)
+    except Exception:
+        pass
 
     which = shutil.which("ffmpeg")
     if which:
