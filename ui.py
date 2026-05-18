@@ -240,12 +240,13 @@ class PLAYBLASTPLUS_PT_main(Panel):
         box = layout.box()
         col = box.column(align=True)
         col.label(text="Output Name", icon='FILE_TEXT')
-        row = col.row(align=True)
-        row.prop(props, "output_token", text="")
-        row.menu("PLAYBLASTPLUS_MT_token_menu", text="", icon='ADD')
+        split = col.split(factor=0.7, align=True)
+        left = split.row(align=True)
+        left.prop(props, "output_token", text="")
+        left.menu("PLAYBLASTPLUS_MT_token_menu", text="", icon='ADD')
         suffixes = parse_suffixes(prefs.output_suffixes)
         suffix_label = props.output_suffix if props.output_suffix in suffixes else "None"
-        row.menu("PLAYBLASTPLUS_MT_suffix_menu", text=suffix_label, icon='DOWNARROW_HLT')
+        split.menu("PLAYBLASTPLUS_MT_suffix_menu", text=suffix_label, icon='DOWNARROW_HLT')
 
         # ── Shading (icon-only) ──────────────────────────────────────────
         box = layout.box()
