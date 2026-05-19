@@ -55,16 +55,6 @@ if os.getenv("AYON_PROJECT_NAME") and os.getenv("AYON_WORKDIR"):
         label="AYON project name",
     )
     tokens.register_token(
-        "<ayon_workdir>",
-        lambda options: os.getenv("AYON_WORKDIR", ""),
-        label="AYON working directory",
-    )
-    tokens.register_token(
-        "<ayon_asset>",
-        lambda options: os.getenv("AYON_FOLDER_PATH", os.getenv("AYON_ASSET", "")),
-        label="AYON asset / folder path",
-    )
-    tokens.register_token(
         "<ayon_task>",
         lambda options: os.getenv("AYON_TASK_NAME", ""),
         label="AYON task name",
