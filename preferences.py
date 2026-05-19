@@ -100,6 +100,15 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         items=apng_presets.enum_items,
     )
 
+    ayon_quick_publish_enabled: BoolProperty(
+        name="Enable Quick Publish",
+        description=(
+            "Show the Quick Publish panel when Blender is launched via the AYON launcher. "
+            "When disabled, the Quick Publish UI is hidden and a prompt to enable it is shown instead."
+        ),
+        default=False,
+    )
+
     media_player_path: StringProperty(
         name="Media Review Player",
         description=(
@@ -212,6 +221,8 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         box = layout.box()
         col = box.column(align=True)
         col.label(text="AYON Integration", icon='URL')
+        col.prop(self, "ayon_quick_publish_enabled")
+        col.separator(factor=0.5)
 
         from .lib.ayon_config import load_creators
         creators = load_creators()

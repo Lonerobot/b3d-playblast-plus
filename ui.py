@@ -157,6 +157,7 @@ class PLAYBLASTPLUS_PT_main(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.scene.playblast_plus
+        prefs = context.preferences.addons[__package__].preferences
 
         # ── Header / description box (Shotput pattern) ──────────────────
         box = layout.box()
@@ -177,10 +178,12 @@ class PLAYBLASTPLUS_PT_main(Panel):
         col.separator(factor=0.4)
         sub = col.column(align=True)
         sub.scale_y = 0.75
-        sub.label(text="Capture and encode the viewport frame range")
+        if ayon and not prefs.ayon_quick_publish_enabled:
+            sub.label(text="Go to prefs to enable AYON Quick Publish")
+        else:
+            sub.label(text="Capture and encode the viewport frame range")
 
         # ── Tool guard (format-aware) ─────────────────────────────────────
-        prefs = context.preferences.addons[__package__].preferences
         from .lib.ffmpeg_utils import dl_state, find_ffmpeg
 
         if dl_state["running"]:
@@ -308,8 +311,8 @@ class PLAYBLASTPLUS_PT_main(Panel):
 
         row.operator("playblastplus.snapshot", text="Snap",      icon='IMAGE')
 
-        # ── AYON Publish (only shown when running inside AYON) ────────────
-        if os.getenv("AYON_PROJECT_NAME"):
+        # ── AYON Publish (only shown when running inside AYON with Quick Publish enabled) ────────────
+        if os.getenv("AYON_PROJECT_NAME") and prefs.ayon_quick_publish_enabled:
             from .operators import (
                 _ayon_creator_cache,
                 _ayon_media_cache,
@@ -325,7 +328,7 @@ class PLAYBLASTPLUS_PT_main(Panel):
             # Section header
             header_row = ayon_col.row(align=True)
             ayon_icon = get_icon_id("ayon")
-            header_row.label(text="Publish Playblast to AYON", **ayon_icon)
+            header_row.label(text="Quick Publish", **ayon_icon)
 
             ayon_col.separator(factor=0.5)
 
