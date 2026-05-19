@@ -241,7 +241,7 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
             warn.alert = False
             warn.label(text="Click 'Get Publish Creators' to retrieve the publish types for your AYON instance.")
             warn.label(text="You can align these to the file types above, along with default")
-            warn.label(text="variants in the config.json file in the add-on folder.", icon='INFO')
+            warn.label(text="variants in the config.json file in the add-on folder.")
 
         col.separator(factor=0.5)
         if os.getenv("AYON_PROJECT_NAME"):
@@ -253,7 +253,7 @@ class PlayblastPlusPreferences(bpy.types.AddonPreferences):
         else:
             sub = col.column(align=True)
             sub.enabled = False
-            sub.label(text="Launch Blender via the AYON launcher to enable probing.", icon='INFO')
+            sub.label(text="Launch Blender via the AYON launcher to enable AYON specific features.", icon='INFO')
 
 
 def register():
