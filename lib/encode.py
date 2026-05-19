@@ -14,16 +14,31 @@ from pathlib import Path
 DEFAULT_INPUT_ARGS = "-c:v libx264 -crf 21 -preset ultrafast -pix_fmt yuv420p"
 
 
-def open_media_file(filepath: str) -> None:
-    """Open *filepath* in the OS default viewer.
+def open_media_file(filepath: str, player_path: str = "") -> None:
+    """Open *filepath* in the preferred viewer, or the OS default if none is set.
 
     Args:
         filepath (str): Path to a video or image file.
+        player_path (str): Optional path to a preferred viewer executable (e.g. DJV2).
+                           When non-empty and the executable exists, it is used instead
+                           of the OS default.  DJV2 accepts files via:
+                           ``djv <file>``
     """
     path = Path(filepath)
     if not path.is_file():
         print(f"[PlayblastPlus] open_media_file: file not found: {filepath}")
         return
+
+    if player_path:
+        player = Path(player_path)
+        if player.is_file():
+            try:
+                subprocess.Popen([str(player), str(path)])
+                return
+            except Exception as exc:
+                print(f"[PlayblastPlus] open_media_file: failed to launch {player_path!r}: {exc}, falling back to OS default")
+        else:
+            print(f"[PlayblastPlus] open_media_file: preferred player not found at {player_path!r}, falling back to OS default")
 
     if sys.platform == "win32":
         os.startfile(str(path))
@@ -46,6 +61,7 @@ def mp4_from_image_sequence(
     burnin_text: str = "",
     burnin_font_size: int = 24,
     input_args: str = DEFAULT_INPUT_ARGS,
+    player_path: str = "",
 ) -> bool:
     """Encode a PNG image sequence to MP4 using FFmpeg.
 
@@ -63,6 +79,7 @@ def mp4_from_image_sequence(
         burnin_text (str): Text to render in the burnin.
         burnin_font_size (int): Font size for the burnin.
         input_args (str): FFmpeg video codec arguments string.
+        player_path (str): Optional path to a preferred viewer executable.
 
     Returns:
         bool: True if the output file was created.
@@ -108,7 +125,7 @@ def mp4_from_image_sequence(
     output = Path(output_path)
     if output.is_file():
         if post_open:
-            open_media_file(output_path)
+            open_media_file(output_path, player_path=player_path)
         return True
 
     print(f"[PlayblastPlus] encode failed — output not found: {output_path}")
@@ -124,6 +141,7 @@ def apng_from_image_sequence(
     end_frame: int = 0,
     post_open: bool = False,
     timeout: int = 300,
+    player_path: str = "",
 ) -> bool:
     """Encode a PNG image sequence to APNG using FFmpeg.
 
@@ -136,6 +154,7 @@ def apng_from_image_sequence(
         end_frame (int): Total number of frames to encode.
         post_open (bool): Open the output file after encoding.
         timeout (int): Maximum seconds to wait for encoding.
+        player_path (str): Optional path to a preferred viewer executable.
 
     Returns:
         bool: True if the output file was created.
@@ -166,7 +185,7 @@ def apng_from_image_sequence(
     output = Path(output_path)
     if output.is_file():
         if post_open:
-            open_media_file(output_path)
+            open_media_file(output_path, player_path=player_path)
         return True
 
     print(f"[PlayblastPlus] APNG encode failed — output not found: {output_path}")
