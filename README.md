@@ -4,6 +4,8 @@
 
 # Playblast Plus
 
+<img width="817" height="471" alt="playblast_plus-small" src="https://github.com/user-attachments/assets/f07864a4-44a0-4e97-8775-67309438e0ba" />
+
 > A dedicated Blender addon port of [Playblast Plus for Maya/3ds Max](https://github.com/TheLineAnimation/playblast-plus) — capture a quick, un-rendered viewport animation directly from Blender's 3D Viewport and encode it to MP4 via FFmpeg.
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![FFmpeg](https://shields.io/badge/FFmpeg-%23171717.svg?logo=ffmpeg&style=for-the-badge&labelColor=171717&logoColor=5cb85c) ![Blender](https://img.shields.io/badge/Blender-4.0%2B-orange?style=for-the-badge&logo=blender&logoColor=white) ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue?style=for-the-badge)
